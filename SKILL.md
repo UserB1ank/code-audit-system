@@ -1,412 +1,318 @@
 ---
 name: code-audit-system
-description: 基于 OpenClaw 的多 Agent 代码审计系统。支持两种调用方式：(1) 命令行 `/skill code-audit` 直接审计项目，(2) 飞书 Bot 交互完成自动化安全审计。使用场景：(1) 人工/AI 搜集 GitHub/Gitee 项目，(2) Qwen 代码审计生成漏洞报告，(3) Docker 隔离环境部署，(4) POC 脚本编写，(5) 漏洞验证，(6) 报告汇总推送。支持任务追踪和断点续传。
-aliases: ["code-audit", "audit", "security-audit", "vuln-scan"]
-keywords: ["code audit", "security", "vulnerability", "Qwen", "POC", "CVE"]
+description: Multi-agent code audit system for finding security vulnerabilities. Use when user provides a git repository URL for security auditing, code review for vulnerabilities, or wants to generate POCs for found vulnerabilities. This skill orchestrates subagents to analyze codebases, identify security issues (SQL injection, RCE, XSS, etc.), write exploit proofs-of-concept, and generate comprehensive vulnerability reports. ALWAYS use this skill when the user mentions code auditing, security analysis, vulnerability scanning, or provides a git URL for security review.
 ---
 
-# Code Audit System Skill
+# Code Audit System - Multi-Agent Security Analysis
 
-## 🚀 快速开始
+This skill orchestrates a multi-agent system to perform comprehensive security audits on codebases. It identifies vulnerabilities, writes proof-of-concept exploits, and generates detailed reports.
 
-### 方式一：命令行直接审计（推荐）
+## When to Use This Skill
 
-在项目目录中运行：
+- User provides a git repository URL for security analysis
+- User requests code auditing for vulnerabilities
+- User wants to find security issues like SQL injection, RCE, XSS, etc.
+- User needs POC (proof-of-concept) code for identified vulnerabilities
+- User wants comprehensive vulnerability reports with exploitation details
 
-```bash
-# 基础审计
-/skill code-audit
-
-# 或指定项目路径
-/skill code-audit /path/to/project
-
-# 深度审计（包含完整调用链分析）
-/skill code-audit -d
-
-# 指定 Qwen 模型
-/skill code-audit -m qwen3-coder-plus
-
-# 自动确认所有提示（YOLO 模式）
-/skill code-audit -y
-
-# 完整选项
-/skill code-audit -d -m qwen3-coder-plus -y /path/to/project
-```
-
-### 方式二：飞书 Bot 交互
-
-```bash
-# 添加审计项目
-/audit add https://github.com/example/target.git
-
-# 查看状态
-/audit status <project_id>
-```
-
----
-
-## 系统架构
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     用户 (飞书 Bot)                              │
+│                        Main Agent                                │
+│  - Orchestrates workflow                                         │
+│  - Manages subagent workspaces                                   │
+│  - Coordinates module detection                                  │
+│  - Aggregates reports                                            │
+│  - Interfaces with user                                          │
 └─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                   OpenClaw Main Agent                           │
-│  • 接收飞书命令                                                  │
-│  • 协调子 Agent                                                  │
-│  • 环境部署 (需确认)                                             │
-│  • 汇总报告                                                      │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
+                              │
         ┌─────────────────────┼─────────────────────┐
-        ↓                     ↓                     ↓
+        │                     │                     │
+        ▼                     ▼                     ▼
 ┌───────────────┐   ┌─────────────────┐   ┌───────────────┐
-│project-       │   │code-auditor     │   │poc-           │
-│collector      │   │(Qwen)           │   │developer      │
-│• GitHub 搜索   │   │• 代码审计        │   │• POC 编写     │
-│• 项目克隆      │   │• 漏洞报告        │   │• Python 脚本  │
+│  SubAgent 1   │   │   SubAgent 2    │   │  SubAgent N   │
+│  Module A     │   │   Module B      │   │  Module N     │
+│  Vulnerability│   │   Vulnerability │   │  Vulnerability│
+│  Scanner      │   │   Scanner       │   │  Scanner      │
 └───────────────┘   └─────────────────┘   └───────────────┘
-                              ↓
-                    ┌─────────────────┐
-                    │vulnerability-   │
-                    │verifier         │
-                    │• POC 执行        │
-                    │• 漏洞验证        │
-                    └─────────────────┘
 ```
 
-### 命令行脚本说明
+## Workflow Overview
 
-**脚本位置**: `scripts/code-audit.sh`
+1. **Project Collection** - User provides git URLs
+2. **Vulnerability Discovery** - SubAgents audit code modules
+3. **Environment Deployment** (optional) - Docker setup
+4. **POC Writing** - SubAgents write exploit scripts
+5. **Verification** (optional) - Test POCs against deployed environment
+6. **Summary Report** - MainAgent aggregates all findings
 
-**选项**:
-| 选项 | 说明 | 示例 |
-|------|------|------|
-| `-h, --help` | 显示帮助 | `/skill code-audit -h` |
-| `-q, --quick` | 快速审计（默认） | `/skill code-audit -q` |
-| `-d, --deep` | 深度审计（调用链分析） | `/skill code-audit -d` |
-| `-m, --model` | 指定 Qwen 模型 | `/skill code-audit -m qwen3-coder-plus` |
-| `-y, --yolo` | 自动确认所有提示 | `/skill code-audit -y` |
-| `-o, --output` | 指定报告输出目录 | `/skill code-audit -o /tmp/reports` |
+## Step-by-Step Instructions
 
-**审计流程**:
-```
-1. 检查 Qwen CLI 安装和认证
-2. 初始化审计环境
-3. 克隆/复制项目源码
-4. 调用 Qwen 进行代码审计
-5. 生成审计报告 (reports/audit_report.md)
-6. (可选) 创建 POC 脚本 (pocs/*.py)
-```
+### Step 1: Project Collection
 
----
+When the user provides git repository URLs:
 
-### 飞书 Bot 方式
+1. Create a project workspace directory: `~/code-audit-projects/<project-name>/`
+2. Clone each repository:
+   ```bash
+   git clone <git-url> ~/code-audit-projects/<project-name>/source/
+   ```
+3. Create project structure:
+   ```
+   <project-name>/
+   ├── source/          # Cloned source code
+   ├── pocs/            # Proof-of-concept scripts
+   ├── reports/         # Vulnerability reports
+   └── workspace/       # SubAgent workspaces
+   ```
 
-## 核心功能
+**Read**: `references/project-structure.md` for detailed storage requirements.
 
-### 命令行模式
+### Step 2: Vulnerability Discovery (Main Process)
 
-| 功能 | 实现方式 | 确认要求 | 说明 |
-|------|---------|---------|------|
-| 项目准备 | `code-audit.sh` | 自动 | 克隆 Git 仓库或复制本地项目 |
-| 漏洞审计 | Qwen CLI (`-m qwen3.5-plus`) | 可选 (-y) | 静态代码分析，生成审计报告 |
-| POC 编写 | Qwen CLI | 可选 (-y) | 根据报告自动编写 Python POC |
-| 任务追踪 | `task-tracker.py` | 自动 | 状态记录到 `state/task-state.json` |
+This is the core auditing phase. The MainAgent coordinates multiple SubAgents.
 
-### 飞书 Bot 模式
+#### Phase 2.1: Technology Discovery
 
-| 功能 | 负责 Agent | 确认要求 | 说明 |
-|------|-----------|---------|------|
-| 项目搜集 | project-collector | 自动 | 人工提交或 AI 搜索 GitHub |
-| 漏洞审计 | code-auditor (Qwen) | 自动 | 使用 code-audit skill，-y 模式 |
-| 环境部署 | main-agent | **需确认** | Docker 隔离部署 |
-| POC 编写 | poc-developer (Qwen) | 自动 | 读取报告，编写 Python 脚本 |
-| 漏洞验证 | vulnerability-verifier | **需确认** | Docker 沙箱执行 POC |
-| 报告汇总 | main-agent | 自动 | 汇总所有报告，飞书推送 |
+First, analyze the project to understand its technical background:
 
-## 工作流程
+1. **Identify programming languages** - Scan file extensions, package files
+2. **Detect frameworks and components** - Check package.json, requirements.txt, pom.xml, etc.
+3. **Determine application type** - Web app, system service, GUI, mobile, etc.
+4. **Map dependencies** - External libraries, databases, services
 
-### 命令行模式流程
+Create a **Work Background** document at `workspace/00-work-background.md` containing:
+- Technology stack summary
+- Application type classification
+- Key components and frameworks
+- Entry points and attack surface areas
 
-```
-1. 用户在项目目录运行 /skill code-audit
-   ↓
-2. code-audit.sh 检查 Qwen CLI 和认证
-   ↓
-3. 初始化审计环境 (code-audit-system/<project>/)
-   ↓
-4. 克隆/复制项目源码到 source/
-   ↓
-5. 调用 Qwen 进行代码审计 → 生成 reports/audit_report.md
-   ↓
-6. (可选) 创建 POC 脚本 → pocs/*.py
-   ↓
-7. 输出报告路径和 POC 目录
-```
+**Use**: `references/module-detection.md` for module structure templates by project type.
 
-### 飞书 Bot 模式流程
+#### Phase 2.2: Module Partitioning
+
+Based on the technology discovery, partition the codebase into logical modules:
+
+1. Identify module boundaries from directory structure
+2. Map files to each module
+3. Identify inter-module dependencies
+4. Create module dependency graph
+
+Store module mapping at `workspace/01-module-map.md`.
+
+#### Phase 2.3: SubAgent Dispatch
+
+For each module, create a dedicated SubAgent workspace:
 
 ```
-1. 用户添加项目 / AI 搜集
-   ↓
-2. project-collector 克隆项目到 source/
-   ↓
-3. code-auditor (Qwen) 审计代码 → 生成 reports/audit_report.md
-   ↓
-4. 询问：是否部署 Docker 环境？
-   ┌─ 是 → main-agent 部署 docker/
-   └─ 否 → 跳过
-   ↓
-5. poc-developer (Qwen) 读取报告 → 编写 pocs/*.py
-   ↓
-6. 询问：是否验证漏洞？
-   ┌─ 是 → vulnerability-verifier 执行 → 生成 reports/verify_report.md
-   └─ 否 → 跳过
-   ↓
-7. main-agent 汇总报告 → 飞书推送
+workspace/
+├── agent-<module-name>/
+│   ├── skill.md           # Module-specific audit skill
+│   ├── work-background.md # Technology context
+│   ├── module-info.md     # Files, responsibilities
+│   └── report.md          # Output: vulnerability findings
 ```
 
-## 漏洞报告格式
+**Dispatch Strategy**:
+- If modules have NO dependencies on each other → dispatch in parallel using thread pool
+- If modules have dependencies → dispatch in dependency order
 
-审计报告必须包含：
+**Read**: `templates/subagent-skill-template.md` for creating SubAgent skills.
+
+#### Phase 2.4: SubAgent Vulnerability Report
+
+Each SubAgent must produce a report covering:
+
+| Field | Description |
+|-------|-------------|
+| **Vulnerability Type** | SQL Injection, RCE, XSS, CSRF, SSRF, Path Traversal, etc. |
+| **Authentication Required** | Yes/No/Partial |
+| **Location** | File path and line numbers (e.g., `auth/login.py:45-52`) |
+| **Trigger Description** | Call chain: function A → function B → vulnerability |
+| **Severity** | Critical/High/Medium/Low |
+| **CVSS Score** (optional) | Base score 0.0-10.0 |
+| **Evidence** | Code snippets showing the vulnerability |
+
+**Use**: `templates/vulnerability-report-template.md` for report format.
+
+### Step 3: Environment Deployment (Optional - Ask User)
+
+Before proceeding, ask the user:
+> "Do you want to deploy the target application in a Docker environment for vulnerability verification? This allows testing POCs in an isolated environment."
+
+If user confirms:
+
+1. **Check for existing Docker config** - Look for Dockerfile, docker-compose.yml
+2. **Create Docker environment** if none exists:
+   - Analyze application dependencies
+   - Write appropriate Dockerfile
+   - Create docker-compose.yml with service dependencies (MySQL, Neo4j, etc.)
+
+3. **Deploy using skills**:
+   - Use `docker-essentials` skill for container setup
+   - Use `docker-sandbox` skill for isolated testing environment
+
+4. **Start the environment**:
+   ```bash
+   docker-compose up -d
+   ```
+
+**Store**: Docker configs at `workspace/docker/`
+
+### Step 4: POC Writing
+
+Dispatch SubAgents to write proof-of-concept exploits:
+
+1. **Read vulnerability reports** from Step 2
+2. **Create POC directory**: `<project-root>/pocs/`
+3. **For each vulnerability**, create a Python script:
+   - `poc-001-sql-injection-login.py`
+   - `poc-002-rce-file-upload.py`
+   - `poc-003-xss-search.py`
+
+**POC Requirements**:
+- Self-contained Python script
+- Clear usage instructions in comments
+- Configurable target URL/host
+- Safe by default (doesn't cause damage)
+- Demonstrates exploit clearly
+
+**Read**: `templates/poc-template.py` for POC structure.
+
+### Step 5: Vulnerability Verification (Optional - Ask User)
+
+Ask the user:
+> "Do you want to verify the POCs against the deployed environment? This will test if each exploit works and produce a verification report."
+
+If user confirms:
+
+1. **Deploy target** (not done in Step 3)
+2. **Run each POC** in the docker-sandbox environment
+3. **Record results**:
+   - Success/Failure
+   - Output/evidence
+   - Time to exploit
+
+4. **Create verification report**: `reports/verification-report.md`
+
+Verification report extends vulnerability report with:
+- Verification status: "成功" (Success) / "失败" (Failure)
+- POC path: Full path to POC script
+- Execution output: Terminal output from POC run
+- Evidence: Screenshots, response data, etc.
+
+### Step 6: Summary Report
+
+MainAgent aggregates all findings into a comprehensive summary:
+
+1. **Collect all reports**:
+   - Individual vulnerability reports from SubAgents
+   - POC verification results (if verified)
+
+2. **Generate summary** at `reports/summary-report.md`:
 
 ```markdown
-# 漏洞审计报告
+# Code Audit Summary Report
 
-## 项目信息
-- 项目名称：xxx
-- 审计时间：2026-03-09
-- 审计工具：Qwen + code-audit skill
+## Project Overview
+- Repository: <git-url>
+- Audit Date: <date>
+- Total Modules Analyzed: <count>
 
-## 漏洞列表
+## Executive Summary
+- Total Vulnerabilities: <count>
+- Critical: <count>
+- High: <count>
+- Medium: <count>
+- Low: <count>
 
-### 漏洞 1: SQL 注入
-- **类型**: SQL Injection
-- **认证**: 需要/不需要
-- **位置**: `src/user.php` line 30-35
-- **触发过程**: 由 `login()` 函数接收用户输入，未经过滤直接拼接到 SQL 语句，导致 SQL 注入
-- **修复建议**: 使用参数化查询
+## Vulnerability Breakdown
+| Type | Count | Verified |
+|------|-------|----------|
+| SQL Injection | 3 | 2/3 |
+| RCE | 1 | 1/1 |
+| XSS | 5 | 3/5 |
 
-### 漏洞 2: RCE
-- **类型**: Remote Code Execution
-- **认证**: 需要
-- **位置**: `admin/upload.php` line 45-60
-- **触发过程**: ...
-- **修复建议**: ...
+## Critical Findings
+[List with severity and status]
+
+## Recommendations
+[Priority-ordered remediation steps]
+
+## Appendix
+- Full reports: reports/vulnerability-*.md
+- POC scripts: pocs/
+- Verification: reports/verification-report.md
 ```
 
-## 验证报告格式
+3. **Store call graphs in Neo4j** (if implemented):
+   - Function call chains leading to vulnerabilities
+   - Data flow from input to sink
 
-在审计报告基础上增加：
+4. **Store structured data in MySQL** (if implemented):
+   - Vulnerability metadata
+   - POC metadata
+   - Verification results
 
-```markdown
-### 漏洞 1: SQL 注入
-- **验证状态**: ✅ 成功 / ❌ 失败
-- **POC 路径**: `pocs/001_sql_injection.py`
-- **执行结果**: 成功获取数据库版本 MySQL 5.7.32
+## Data Storage
+
+### MySQL Schema (Structured Data)
+
+Tables needed:
+- `vulnerabilities` - Core vulnerability records
+- `pocs` - POC script metadata
+- `verifications` - Verification results
+- `projects` - Project metadata
+
+### Neo4j Schema (Relationship Data)
+
+Model call chains as:
+```
+(Node:Function {name: "userInput", output: "string"})
+  -[:CALLS]->
+(Node:Function {name: "sanitize", output: "string"})
+  -[:CALLS]->
+(Node:Function {name: "executeQuery", output: "result"})
 ```
 
-## 目录结构
+Each entity has:
+- Properties for input parameters
+- Output as property or edge label
+- Source location (file:line)
 
-```
-~/.openclaw/<workspace>/code-audit-system/
-├── <项目名称 1>/
-│   ├── source/          # 源码 (git clone)
-│   ├── reports/         # 审计报告 + 验证报告
-│   │   ├── audit_report.md
-│   │   └── verify_report.md
-│   ├── pocs/            # POC 脚本
-│   │   ├── 001_sql_injection.py
-│   │   └── 002_rce.py
-│   └── docker/          # Docker 配置
-│       ├── Dockerfile
-│       └── docker-compose.yml
-├── <项目名称 2>/
-├── state/               # 任务状态追踪
-│   ├── task-state.json
-│   └── task-history.jsonl
-└── scripts/
-    └── task-tracker.py
-```
+## SubAgent Workspace Creation
 
-## 飞书命令
+For each SubAgent, create a dedicated workspace with:
 
-| 命令 | 功能 | 示例 |
-|------|------|------|
-| `/audit add` | 添加审计项目 | `/audit add https://github.com/xxx/xxx.git` |
-| `/audit search` | AI 搜索项目 | `/audit search "SQL injection" --cve` |
-| `/audit list` | 查看项目列表 | `/audit list` |
-| `/audit status` | 查看项目状态 | `/audit status 1` |
-| `/audit report` | 获取审计报告 | `/audit report 1` |
-| `/audit deploy` | 部署环境 | `/audit deploy 1` |
-| `/audit poc` | 编写 POC | `/audit poc 1` |
-| `/audit verify` | 验证漏洞 | `/audit verify 1` |
-| `/audit cancel` | 取消任务 | `/audit cancel <task_id>` |
+1. **skill.md** - Module-specific audit instructions
+2. **work-background.md** - Technology context
+3. **module-info.md** - File list, responsibilities, interfaces
+4. **report.md** - Output template
 
-## Agent 配置
+Use the `superpowers:dispatching-parallel-agents` skill when modules are independent.
 
-### 命令行模式
+## Error Handling
 
-| 组件 | 工具 | 模型 | 说明 |
-|------|------|------|------|
-| `code-audit.sh` | Qwen CLI | qwen3.5-plus (默认) | 主审计脚本 |
-| `task-tracker.py` | Python | - | 任务状态追踪 |
+- **Clone failures**: Report to user, skip repository
+- **SubAgent timeout**: Retry once, then mark as incomplete
+- **Docker failures**: Fall back to static analysis only
+- **POC execution errors**: Log output, mark verification as failed
 
-### 飞书 Bot 模式
+## Output Delivery
 
-| Agent | 模式 | 工具 | 超时 | 确认 |
-|-------|------|------|------|------|
-| `project-collector` | run | agent-browser | 600s | 自动 |
-| `code-auditor` | session | qwen-code | 3600s | 自动 (-y) |
-| `main-agent` | session | docker-essentials | - | 环境部署需确认 |
-| `poc-developer` | session | qwen-code | 1800s | 自动 (-y) |
-| `vulnerability-verifier` | run | docker-sandbox | 1800s | **需确认** |
-
-## 支持的漏洞类型
-
-- SQL Injection (SQL 注入)
-- XSS (跨站脚本)
-- RCE (远程代码执行)
-- File Upload Vulnerability (文件上传)
-- SSRF (服务端请求伪造)
-- XXE (XML 实体注入)
-- Authentication/Authorization Bypass (认证/授权绕过)
-- Path Traversal (路径遍历)
-- Command Injection (命令注入)
-- Deserialization Vulnerability (反序列化)
-- Information Disclosure (信息泄露)
-
-## 任务追踪
-
-### 状态文件
-
-```
-code-audit-system/state/
-├── task-state.json      # 当前状态快照
-└── task-history.jsonl   # 事件历史 (JSONL)
-```
-
-### 追踪器命令
-
-```bash
-# 查看当前状态
-python code-audit-system/scripts/task-tracker.py status
-
-# 查看历史
-python code-audit-system/scripts/task-tracker.py history [limit]
-
-# 生成统计
-python code-audit-system/scripts/task-tracker.py stats
-
-# 恢复任务
-python code-audit-system/scripts/task-tracker.py resume
-```
-
-## 环境部署注意事项
-
-### ⚠️ Web 目录权限设置
-
-PHP 项目需要 Web 用户 (www-data, UID 33) 对以下目录有**读写权限**：
-
-| 目录 | 用途 | 必须可写 |
-|------|------|---------|
-| `.env` | 环境配置 | ✅ |
-| `runtime/` | 日志、缓存 | ✅ |
-| `app/install/` | 安装程序 | ✅ |
-| `public/uploads/` | 上传文件 | ✅ |
-
-**解决方案**: 在 `docker-compose.yml` 中添加：
-
-```yaml
-services:
-  web:
-    user: "33:33"
-    command: >
-      sh -c "chown -R 33:33 /var/www/html/.env /var/www/html/runtime /var/www/html/app/install /var/www/html/public/uploads;
-             chmod -R 775 /var/www/html/.env /var/www/html/runtime /var/www/html/app/install /var/www/html/public/uploads;
-             apache2-foreground"
-```
-
-详见 `references/docker-deploy.md` 完整指南。
+Present to user:
+1. Summary report (inline or as file)
+2. Link to full reports directory
+3. List of POC scripts created
+4. (Optional) Verification results
 
 ---
 
-## 安全说明
+## Related Templates and References
 
-1. **沙箱执行**: 所有 POC 在 Docker 隔离环境中执行
-2. **用户确认**: 环境部署和漏洞验证需用户确认
-3. **权限控制**: 飞书用户权限验证
-4. **操作日志**: 完整记录所有操作
-5. **敏感信息**: 状态文件不包含密码、Token
-
-## 相关文档
-
-| 文档 | 路径 | 说明 |
-|------|------|------|
-| 使用指南 | `references/USAGE.md` | 完整使用流程 |
-| 报告模板 | `references/report-template.md` | 审计 + 验证报告模板 |
-| POC 模板 | `references/poc-template.py` | Python POC 脚本模板 |
-| Docker 部署 | `references/docker-deploy.md` | Docker 环境部署指南 (**含权限设置**) |
-| 故障排除 | `references/troubleshooting.md` | 常见问题解决方案 |
-| 任务追踪 | `scripts/task-tracker.py` | 状态查询工具 |
-| 命令行脚本 | `scripts/code-audit.sh` | 命令行审计入口 |
-
----
-
-## 💡 使用示例
-
-### 命令行模式
-
-```bash
-# 示例 1: 审计当前目录
-cd /path/to/project
-/skill code-audit
-
-# 示例 2: 审计指定项目
-/skill code-audit /path/to/vulnerable-app
-
-# 示例 3: 深度审计（完整调用链分析）
-/skill code-audit -d /path/to/project
-
-# 示例 4: 使用更强的 Qwen 模型
-/skill code-audit -m qwen3-coder-plus /path/to/project
-
-# 示例 5: YOLO 模式（自动确认所有提示）
-/skill code-audit -y -d /path/to/project
-
-# 示例 6: 审计 Git 仓库
-/skill code-audit https://github.com/OWASP/juice-shop.git
-```
-
-### 飞书 Bot 模式
-
-```bash
-# 添加审计项目
-/audit add https://github.com/OWASP/juice-shop.git
-
-# 查看项目列表
-/audit list
-
-# 查看项目状态
-/audit status 1
-
-# 获取审计报告
-/audit report 1
-
-# 手动触发 POC 编写
-/audit poc 1
-
-# 手动触发漏洞验证
-/audit verify 1
-```
-
----
-
-## 版本
-
-- **Skill 版本**: 3.1.0
-- **最后更新**: 2026-03-31
-- **新增功能**: 命令行 `/skill code-audit` 直接审计
+- `templates/vulnerability-report-template.md` - Report format
+- `templates/poc-template.py` - POC script structure
+- `templates/subagent-skill-template.md` - SubAgent skill template
+- `references/module-detection.md` - Module detection by project type
+- `references/project-structure.md` - Project storage structure

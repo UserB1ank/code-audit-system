@@ -1,0 +1,47 @@
+{
+  "skill_name": "code-audit-system",
+  "evals": [
+    {
+      "id": 1,
+      "name": "simple-python-web-app",
+      "prompt": "请对这个项目进行代码审计：https://github.com/example/vulnerable-flask-app.git",
+      "expected_output": "完成技术栈分析，模块划分，生成漏洞报告，识别常见漏洞如 SQL 注入、XSS 等",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "go-microservice-audit",
+      "prompt": "审计这个 Go 微服务项目，找出所有安全漏洞并生成 POC: https://github.com/example/go-microservice.git",
+      "expected_output": "识别 Go 项目特有的漏洞（如命令注入、路径遍历），为每个高危漏洞编写 POC 脚本",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "django-app-full-workflow",
+      "prompt": "对 https://github.com/example/django-shop.git 进行完整代码审计，包括漏洞验证",
+      "expected_output": "执行完整工作流：技术发现→模块划分→漏洞扫描→POC 编写→Docker 部署验证→生成总结报告",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "rust-system-daemon",
+      "prompt": "审计这个 Rust 编写的系统守护进程：https://github.com/example/rust-daemon.git，重点关注内存安全和命令注入问题",
+      "expected_output": "识别 Rust 项目中的不安全代码块、命令注入、竞态条件等系统级漏洞",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "react-nodejs-fullstack",
+      "prompt": "对这个前后端分离项目做安全审计：https://github.com/example/react-node-app.git",
+      "expected_output": "分别审计前端 (React XSS、状态管理) 和后端 (Node.js 注入、认证) 模块，生成独立报告后汇总",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "php-legacy-app",
+      "prompt": "https://github.com/example/legacy-php-app.git 这个 PHP 老项目有很多安全问题，请找出所有可利用的漏洞",
+      "expected_output": "识别 PHP 常见漏洞（SQL 注入、文件包含、反序列化），为关键漏洞编写验证 POC",
+      "files": []
+    }
+  ]
+}

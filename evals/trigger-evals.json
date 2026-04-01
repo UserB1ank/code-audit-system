@@ -1,0 +1,22 @@
+[
+  {"query": "请对这个项目进行代码审计：https://github.com/example/vulnerable-app.git", "should_trigger": true},
+  {"query": "https://github.com/user/repo.git 这个仓库有 SQL 注入漏洞吗？帮我找找", "should_trigger": true},
+  {"query": "我想审计一下公司内部的代码库，看有没有安全风险", "should_trigger": true},
+  {"query": "对这个项目做 vulnerability scanning，生成报告和 POC", "should_trigger": true},
+  {"query": "检查这个 git 仓库的安全漏洞，用多 agent 方式分析", "should_trigger": true},
+  {"query": "https://github.com/test/project 帮我做代码安全审查", "should_trigger": true},
+  {"query": "用 subagent 架构审计这个项目的代码", "should_trigger": true},
+  {"query": "找出这个 repo 里所有的 RCE、XSS、SQL 注入点", "should_trigger": true},
+  {"query": "ok so my boss just sent me this git repo and wants a security audit ASAP - can you help?", "should_trigger": true},
+  {"query": "https://gitlab.com/company/internal-tool.git 需要做 penetration test 级别的代码分析", "should_trigger": true},
+  {"query": "帮我写一个 Python 脚本实现快速排序", "should_trigger": false},
+  {"query": "这个 GitHub 项目怎么部署？有文档吗", "should_trigger": false},
+  {"query": "解释一下 React hooks 的工作原理", "should_trigger": false},
+  {"query": "git clone https://github.com/xxx/xxx 报错怎么办", "should_trigger": false},
+  {"query": "帮我 review 一下这个 PR 的代码风格", "should_trigger": false},
+  {"query": "如何优化数据库查询性能", "should_trigger": false},
+  {"query": "把这份 JSON 数据转换成 CSV 格式", "should_trigger": false},
+  {"query": "这个项目用的什么编程语言？", "should_trigger": false},
+  {"query": "README.md 怎么写更好", "should_trigger": false},
+  {"query": "帮我生成一个随机的 API key", "should_trigger": false}
+]
