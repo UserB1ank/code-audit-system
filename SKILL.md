@@ -1,19 +1,56 @@
 ---
 name: code-audit-system
-description: Multi-agent code audit system for finding security vulnerabilities. Use when user provides a git repository URL for security auditing, code review for vulnerabilities, or wants to generate POCs for found vulnerabilities. This skill orchestrates subagents to analyze codebases, identify security issues (SQL injection, RCE, XSS, etc.), write exploit proofs-of-concept, and generate comprehensive vulnerability reports. ALWAYS use this skill when the user mentions code auditing, security analysis, vulnerability scanning, or provides a git URL for security review.
+description: CVE-oriented multi-agent code audit system. Use when user provides a git repository URL for vulnerability discovery with the goal of submitting CVEs. This skill orchestrates subagents to find exploitable vulnerabilities (RCE, SQLi, Auth Bypass, etc.), write weaponized POCs, and generate CVE-ready reports. ALWAYS use this skill when the user mentions code auditing, vulnerability hunting, CVE discovery, or provides a git URL for security review.
 ---
 
-# Code Audit System - Multi-Agent Security Analysis
+# Code Audit System - CVE Discovery Engine
 
-This skill orchestrates a multi-agent system to perform comprehensive security audits on codebases. It identifies vulnerabilities, writes proof-of-concept exploits, and generates detailed reports.
+**核心理念**: 只报告可实际利用的漏洞，目标是提交 CVE，而非让代码变得更安全。
+
+This skill orchestrates a multi-agent system to discover exploitable vulnerabilities with the sole purpose of CVE submission. It filters out theoretical issues and focuses only on vulnerabilities with complete exploit chains.
+
+## ⭐ CVE-Oriented Audit Principles
+
+### 核心原则 (必须遵守)
+
+1. **只报告可实际利用的漏洞**
+   - ✅ 有明确用户输入入口 (Source)
+   - ✅ 有完整调用链 (Source → Sink)
+   - ✅ 无有效安全控制阻断
+   - ✅ 可编写可执行 POC
+   - ❌ 拒绝理论漏洞 (无输入入口)
+   - ❌ 拒绝潜在漏洞 (需要不可能的条件)
+   - ❌ 拒绝被安全控制完全阻断的漏洞
+
+2. **CVE 提交标准**
+   - 目标：CVSS ≥ 7.0 (High/Critical)
+   - 必须有 POC 验证
+   - 必须影响真实用户 (非本地/测试环境)
+   - 必须有明确受影响版本
+
+3. **深度优于广度**
+   - 1 个可利用漏洞 > 10 个理论漏洞
+   - 完整调用链追踪 > 表面扫描
+   - 证据链支撑每个结论
+
+### 漏洞判定标准
+
+| 类型 | 报告？ | 说明 |
+|------|--------|------|
+| 可利用漏洞 | ✅ 报告 | 有入口 + 无阻断 + 可 POC |
+| 理论漏洞 | ❌ 丢弃 | 无用户输入入口 |
+| 潜在漏洞 | ❌ 丢弃 | 需要特殊/不可能的条件 |
+| 被阻断漏洞 | ❌ 丢弃 | 有有效安全控制 |
+
+---
 
 ## When to Use This Skill
 
-- User provides a git repository URL for security analysis
-- User requests code auditing for vulnerabilities
-- User wants to find security issues like SQL injection, RCE, XSS, etc.
-- User needs POC (proof-of-concept) code for identified vulnerabilities
-- User wants comprehensive vulnerability reports with exploitation details
+- User provides a git repository URL for **CVE discovery**
+- User requests **exploitable vulnerability** hunting
+- User wants to find **CVE-worthy** issues (RCE, SQLi, Auth Bypass, etc.)
+- User needs **weaponized POC** code for identified vulnerabilities
+- User wants **CVE-ready reports** with exploitation details
 
 ## System Architecture
 
@@ -49,50 +86,94 @@ This skill orchestrates a multi-agent system to perform comprehensive security a
 
 ## Step-by-Step Instructions
 
-### Step 1: Project Collection
+### Step 1: Project Initialization (强制标准目录结构)
 
-When the user provides git repository URLs:
+**⚠️ 重要**: 必须严格遵守标准目录结构，参考 `references/project-structure.md`
 
-1. Create a project workspace directory: `~/code-audit-projects/<project-name>/`
-2. Clone each repository:
+When the user provides a git repository URL:
+
+1. **创建标准项目目录**:
    ```bash
-   git clone <git-url> ~/code-audit-projects/<project-name>/source/
-   ```
-3. Create project structure:
-   ```
-   <project-name>/
-   ├── source/          # Cloned source code
-   ├── pocs/            # Proof-of-concept scripts
-   ├── reports/         # Vulnerability reports
-   └── workspace/       # SubAgent workspaces
+   mkdir -p code-audit-projects/<project-name>/{source,state,workspace,pocs,reports,docker}
    ```
 
-**Read**: `references/project-structure.md` for detailed storage requirements.
+2. **克隆源代码到 source/** (必须):
+   ```bash
+   cd code-audit-projects/<project-name>/
+   git clone <git-url> source/
+   ```
+   
+   **❌ 错误**: `git clone <url> .` (直接克隆到根目录)  
+   **✅ 正确**: `git clone <url> source/` (克隆到 source/ 子目录)
 
-### Step 2: Vulnerability Discovery (Main Process)
+3. **创建 metadata.json**:
+   ```json
+   {
+     "project_name": "<project-name>",
+     "git_url": "<repo-url>",
+     "clone_date": "2026-04-02T10:30:00Z",
+     "commit_hash": "<git rev-parse HEAD>",
+     "language": ["Java", "Python", "Rust", ...],
+     "framework": ["Spring", "Django", ...],
+     "app_type": "web-application|system-service|gui|mobile",
+     "modules": [],
+     "vulnerabilities_found": 0,
+     "pocs_written": 0
+   }
+   ```
 
-This is the core auditing phase. The MainAgent coordinates multiple SubAgents.
+4. **创建技术背景文档** (MainAgent 负责):
+   - `workspace/00-work-background.md` - 技术栈、攻击面、CVE 发现策略
+   - `workspace/01-module-map.md` - 模块划分、文件映射
 
-#### Phase 2.1: Technology Discovery
+5. **创建状态文件**:
+   - `state/audit-state.json` - 审计状态追踪
+   - `state/task-history.jsonl` - 事件历史日志
 
-First, analyze the project to understand its technical background:
+**完整目录结构**:
+```
+code-audit-projects/<project-name>/
+├── source/              # ✅ 源代码 (git clone 必须到此)
+├── state/               # ✅ 状态追踪
+│   ├── audit-state.json
+│   └── task-history.jsonl
+├── workspace/           # ✅ CVE Hunter 工作区
+│   ├── 00-work-background.md
+│   ├── 01-module-map.md
+│   └── agent-<module>/
+│       ├── skill.md
+│       └── report.md
+├── pocs/                # ✅ POC 脚本 (CVE 验证后)
+├── reports/             # ✅ CVE 报告 (最终输出)
+└── metadata.json        # ✅ 项目元数据
+```
+
+**Read**: `references/project-structure.md` for complete directory standards.
+
+### Step 2: CVE Discovery (Main Process)
+
+This is the core vulnerability hunting phase. The MainAgent coordinates multiple SubAgents.
+
+#### Phase 2.1: Technology Reconnaissance
+
+Analyze the project for CVE discovery:
 
 1. **Identify programming languages** - Scan file extensions, package files
 2. **Detect frameworks and components** - Check package.json, requirements.txt, pom.xml, etc.
 3. **Determine application type** - Web app, system service, GUI, mobile, etc.
-4. **Map dependencies** - External libraries, databases, services
+4. **Map attack surface** - User input points, auth mechanisms, file operations, network interfaces
 
 Create a **Work Background** document at `workspace/00-work-background.md` containing:
 - Technology stack summary
 - Application type classification
-- Key components and frameworks
-- Entry points and attack surface areas
+- **Attack surface map** (entry points, trust boundaries)
+- **High-risk areas** (auth, file ops, serialization, command execution)
 
 **Use**: `references/module-detection.md` for module structure templates by project type.
 
 #### Phase 2.2: Module Partitioning
 
-Based on the technology discovery, partition the codebase into logical modules:
+Partition the codebase into logical modules for parallel auditing:
 
 1. Identify module boundaries from directory structure
 2. Map files to each module
@@ -101,40 +182,195 @@ Based on the technology discovery, partition the codebase into logical modules:
 
 Store module mapping at `workspace/01-module-map.md`.
 
-#### Phase 2.3: SubAgent Dispatch
+#### Phase 2.3: SubAgent Dispatch (CVE Hunters)
+
+**⚠️ 目录结构要求**: 必须使用标准工作区布局
+
+**MainAgent 必须为每个子 Agent 创建独立背景文档**
 
 For each module, create a dedicated SubAgent workspace:
 
 ```
 workspace/
-├── agent-<module-name>/
-│   ├── skill.md           # Module-specific audit skill
-│   ├── work-background.md # Technology context
-│   ├── module-info.md     # Files, responsibilities
-│   └── report.md          # Output: vulnerability findings
+├── 00-work-background.md        # ✅ MainAgent 创建 (全局技术侦察)
+├── 01-module-map.md             # ✅ MainAgent 创建 (模块划分)
+├── agent-<module-1>/            # ✅ 子 Agent 1 工作区
+│   ├── background.md            # MainAgent 创建 (独立背景文档) ⭐
+│   ├── skill.md                 # MainAgent 创建 (审计指令)
+│   ├── execution.log          # ⭐ 子 Agent 执行日志 (自动保存)
+│   └── report.md                # 子 Agent 输出 (CVE 报告)
+├── agent-<module-2>/            # ✅ 子 Agent 2 工作区
+│   ├── background.md            # ⭐ 新增
+│   ├── execution.log          # ⭐ 新增
+│   └── report.md
+└── agent-<module-N>/            # ✅ 子 Agent N 工作区
+    ├── background.md            # ⭐ 新增
+    ├── execution.log          # ⭐ 新增
+    └── report.md
 ```
 
 **Dispatch Strategy**:
 - If modules have NO dependencies on each other → dispatch in parallel using thread pool
 - If modules have dependencies → dispatch in dependency order
 
-**Read**: `templates/subagent-skill-template.md` for creating SubAgent skills.
+**Read**: 
+- `templates/subagent-skill-template.md` for creating SubAgent skills
+- `templates/subagent-background-template.md` for creating background documents ⭐
 
-#### Phase 2.4: SubAgent Vulnerability Report
+---
 
-Each SubAgent must produce a report covering:
+### MainAgent 创建子 Agent 背景文档 (必须)
+
+**每个子 Agent 启动前**, MainAgent 必须创建 `workspace/agent-<module>/background.md`，包含：
+
+#### 1. 模块涉及文件列表
+
+```markdown
+## 涉及文件
+
+**核心文件** (重点审计):
+1. `File1.java` (行数：XXX) - 功能描述 - CVE 潜力 🔴
+2. `File2.java` (行数：XXX) - 功能描述 - CVE 潜力 🔴
+
+**辅助文件**:
+- `File3.java` - 辅助功能
+- ...
+```
+
+#### 2. 可能存在的漏洞类型
+
+```markdown
+## 高价值目标 (P0)
+
+| 漏洞类型 | CVSS 潜力 | 存在可能性 | 审计优先级 |
+|----------|-----------|------------|------------|
+| RCE | 9.0-10.0 | 高 | 🔴 立即 |
+| Auth Bypass | 8.0-10.0 | 中 | 🔴 立即 |
+
+## 中等价值目标 (P1)
+...
+```
+
+#### 3. 审计流程与思路
+
+```markdown
+## 审计流程
+
+### Phase 1: 代码地图绘制 (10 分钟)
+- 列出所有源文件及其行数
+- 识别入口点 (public 方法、REST 端点)
+- 识别危险 Sink (SQL、文件操作、命令执行)
+
+### Phase 2: 数据流追踪 (25-35 分钟)
+- 从 Source 逐层向下追踪到 Sink
+- 记录每层函数的文件名和行号
+- 标注每层的处理逻辑 (验证、过滤、转换)
+
+### Phase 3: 安全控制分析 (10 分钟)
+- 识别全局策略限制
+- 分析绕过可能性
+
+### Phase 4: CVE 发现与报告 (10-15 分钟)
+- 验证可利用性
+- 计算 CVSS 评分
+```
+
+#### 4. 调用流追踪指南
+
+```markdown
+## 调用流追踪
+
+**Source (用户输入)**:
+- `XXX.java:10` - `@RequestParam("query") String query`
+
+**Process (处理层)**:
+- `XXX.java:25` - `buildQuery(query)` - 字符串拼接
+- `XXX.java:40` - `validateInput(query)` - 仅检查 null
+
+**Sink (危险操作)**:
+- `XXX.java:55` - `queryManager.createQuery(query, Query.SQL)`
+
+**完整调用链**:
+userInput → buildQuery → validateInput (不足) → createQuery → CVE
+```
+
+#### 5. 输入输出流追踪
+
+```markdown
+## 输入输出流
+
+**输入流**:
+- HTTP 请求 → REST 端点 → Service 层 → DAO 层 → JCR 查询
+- 文件上传 → 验证 (不足) → 存储 → 执行
+
+**输出流**:
+- JCR 查询结果 → Service 层 → REST 响应 → 攻击者
+- 文件内容 → InputStream → OutputStream → 攻击者
+```
+
+#### 6. 全局策略限制分析
+
+```markdown
+## 全局策略
+
+**现有控制**:
+- WCMCoreUtils.getUserSessionProvider() - 获取用户会话
+- ACL 权限检查 - 理论上限制节点访问
+
+**绕过方法**:
+- 使用 `getSystemSessionProvider()` 替代 → 完全绕过 ACL
+- 代码中多处使用系统会话 (见 `BaseConnector.java:306`)
+```
+
+#### 7. 绕过可能性分析
+
+```markdown
+## 绕过分析
+
+**安全控制 vs 绕过方法**:
+
+| 安全控制 | 绕过方法 | 可利用性 |
+|----------|----------|----------|
+| ACL 权限检查 | getSystemSessionProvider() | ✅ 高 |
+| 路径验证 | URL 编码绕过 (%2e%2e%2f) | ✅ 中 |
+| null 检查 | 发送非 null 恶意值 | ✅ 高 |
+```
+
+---
+
+**SubAgent Instructions Must Include**:
+- **目标源代码路径** (绝对路径): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/source/<module>/`
+- **报告输出位置** (绝对路径): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/report.md`
+- **背景文档位置** (必须阅读): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/background.md`
+- Focus on exploitable vulnerabilities only
+- Trace complete call chains (Source → Sink)
+- Document security controls and bypass methods
+- Filter out theoretical issues
+
+#### Phase 2.4: CVE-Ready Vulnerability Report
+
+Each SubAgent must produce a **CVE-ready report** covering:
 
 | Field | Description |
 |-------|-------------|
-| **Vulnerability Type** | SQL Injection, RCE, XSS, CSRF, SSRF, Path Traversal, etc. |
-| **Authentication Required** | Yes/No/Partial |
+| **Vulnerability Type** | RCE, SQLi, Auth Bypass, Path Traversal, etc. |
+| **Exploitability** | ✅ Exploitable / ❌ Theoretical |
+| **Authentication Required** | None / Low-Priv / High-Priv |
 | **Location** | File path and line numbers (e.g., `auth/login.py:45-52`) |
-| **Trigger Description** | Call chain: function A → function B → vulnerability |
-| **Severity** | Critical/High/Medium/Low |
-| **CVSS Score** (optional) | Base score 0.0-10.0 |
-| **Evidence** | Code snippets showing the vulnerability |
+| **Call Chain** | Complete: `userInput() → process() → sink()` |
+| **Security Controls** | What exists, how to bypass |
+| **Severity** | Critical/High (CVE-worthy) / Medium / Low |
+| **CVSS Score** | Base score 0.0-10.0 (aim for ≥7.0) |
+| **POC Feasibility** | ✅ Can weaponize / ❌ Cannot weaponize |
+| **Evidence** | Code snippets with line numbers |
 
 **Use**: `templates/vulnerability-report-template.md` for report format.
+
+**CVE Submission Criteria**:
+- CVSS ≥ 7.0 (High/Critical)
+- Affects real users (not local/test only)
+- Has clear affected versions
+- Can be demonstrated with POC
 
 ### Step 3: Environment Deployment (Optional - Ask User)
 
@@ -160,25 +396,52 @@ If user confirms:
 
 **Store**: Docker configs at `workspace/docker/`
 
-### Step 4: POC Writing
+### Step 4: Weaponized POC Writing
 
-Dispatch SubAgents to write proof-of-concept exploits:
+Dispatch SubAgents to write **weaponized** proof-of-concept exploits for CVE submission:
 
-1. **Read vulnerability reports** from Step 2
+1. **Read vulnerability reports** from Step 2 (CVE-worthy only)
 2. **Create POC directory**: `<project-root>/pocs/`
-3. **For each vulnerability**, create a Python script:
-   - `poc-001-sql-injection-login.py`
-   - `poc-002-rce-file-upload.py`
-   - `poc-003-xss-search.py`
+3. **For each CVE-worthy vulnerability**, create a Python script:
+   - `poc-001-rce-auth-bypass.py`
+   - `poc-002-sqli-admin-takeover.py`
+   - `poc-003-path-traversal-rce.py`
 
-**POC Requirements**:
-- Self-contained Python script
-- Clear usage instructions in comments
-- Configurable target URL/host
-- Safe by default (doesn't cause damage)
-- Demonstrates exploit clearly
+**POC Requirements (CVE Submission Standard)**:
+- Self-contained Python script (no external dependencies beyond requests)
+- Clear usage instructions with example command
+- Configurable target URL/host/port
+- **Weaponized by default** (demonstrates full impact)
+- Safe execution (no permanent damage, but proves exploit)
+- **Before/After evidence** (e.g., `whoami` output, file created, data extracted)
+- CVSS scoring justification in comments
+
+**POC Structure**:
+```python
+#!/usr/bin/env python3
+"""
+CVE-XXXX-XXXXX: [Vulnerability Name]
+Target: [Product] [Affected Versions]
+Author: [Your Name]
+CVSS: [Score] [Vector]
+
+Usage: python3 poc.py -t http://target:port
+
+Proof of Concept:
+- Before: [normal state]
+- Exploit: [action]
+- After: [compromised state]
+"""
+```
 
 **Read**: `templates/poc-template.py` for POC structure.
+
+**CVE Submission Package**:
+For each CVE-worthy vulnerability, prepare:
+1. POC script (weaponized)
+2. Video demonstration (optional but recommended)
+3. Technical writeup (impact, affected versions, mitigation)
+4. CVSS v3.1 scoring
 
 ### Step 5: Vulnerability Verification (Optional - Ask User)
 
@@ -202,58 +465,93 @@ Verification report extends vulnerability report with:
 - Execution output: Terminal output from POC run
 - Evidence: Screenshots, response data, etc.
 
-### Step 6: Summary Report
+### Step 6: CVE Submission Report
 
-MainAgent aggregates all findings into a comprehensive summary:
+MainAgent aggregates all findings into a **CVE-ready submission package**:
 
 1. **Collect all reports**:
-   - Individual vulnerability reports from SubAgents
+   - Individual vulnerability reports from SubAgents (CVE-worthy only)
+   - Weaponized POC scripts
    - POC verification results (if verified)
 
-2. **Generate summary** at `reports/summary-report.md`:
+2. **Generate CVE Submission Report** at `reports/cve-submission-report.md`:
 
 ```markdown
-# Code Audit Summary Report
+# CVE Submission Report
 
 ## Project Overview
-- Repository: <git-url>
-- Audit Date: <date>
-- Total Modules Analyzed: <count>
+- **Product**: [Product Name]
+- **Repository**: <git-url>
+- **Vendor**: [Vendor Name]
+- **Audit Date**: <date>
+- **Auditor**: [Your Name/Handle]
 
-## Executive Summary
-- Total Vulnerabilities: <count>
-- Critical: <count>
-- High: <count>
-- Medium: <count>
-- Low: <count>
+## Executive Summary (CVE Focus)
+- **CVE-Worthy Vulnerabilities**: <count> (CVSS ≥ 7.0)
+- **Critical (CVSS 9.0-10.0)**: <count>
+- **High (CVSS 7.0-8.9)**: <count>
+- **Total POCs Weaponized**: <count>
 
-## Vulnerability Breakdown
-| Type | Count | Verified |
-|------|-------|----------|
-| SQL Injection | 3 | 2/3 |
-| RCE | 1 | 1/1 |
-| XSS | 5 | 3/5 |
+## CVE Candidates
 
-## Critical Findings
-[List with severity and status]
+| ID | Type | CVSS | Affected Versions | POC | Status |
+|----|------|------|-------------------|-----|--------|
+| CVE-XXXX-XXXXX | RCE | 9.8 | v1.0-v2.3 | ✅ | Ready to submit |
+| CVE-XXXX-XXXXX | Auth Bypass | 8.5 | v1.5-v2.3 | ✅ | Ready to submit |
 
-## Recommendations
-[Priority-ordered remediation steps]
+## Detailed CVE Reports
 
-## Appendix
-- Full reports: reports/vulnerability-*.md
-- POC scripts: pocs/
-- Verification: reports/verification-report.md
+### CVE-XXXX-XXXXX: [Vulnerability Name]
+
+**Severity**: Critical (CVSS 9.8)  
+**Vector**: AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H  
+**Affected Versions**: v1.0 - v2.3  
+**Fixed Versions**: [If known]  
+
+**Technical Details**:
+- **Location**: `file.py:line`
+- **Root Cause**: [Brief description]
+- **Attack Vector**: [How attacker exploits]
+- **Impact**: [What attacker achieves]
+
+**Call Chain**:
+```
+userInput() → vulnerable_function() → sink()
 ```
 
-3. **Store call graphs in Neo4j** (if implemented):
-   - Function call chains leading to vulnerabilities
-   - Data flow from input to sink
+**POC**: `pocs/poc-001-rce.py`
 
-4. **Store structured data in MySQL** (if implemented):
-   - Vulnerability metadata
-   - POC metadata
-   - Verification results
+**Verification**: ✅ Successful (see verification report)
+
+**Mitigation**: [Vendor remediation steps]
+
+## Submission Checklist
+
+For each CVE:
+- [ ] Technical writeup complete
+- [ ] POC weaponized and tested
+- [ ] CVSS v3.1 scoring calculated
+- [ ] Affected versions confirmed
+- [ ] Vendor contact info (if coordinated disclosure)
+- [ ] Video demonstration (optional)
+
+## Appendix
+- Full reports: `reports/vulnerability-*.md`
+- Weaponized POCs: `pocs/`
+- Verification: `reports/verification-report.md`
+- Call graphs: `reports/call-graphs/` (if available)
+```
+
+3. **CVE Submission Targets**:
+   - **MITRE**: Primary CVE CNA
+   - **GitHub Security Advisories**: For open source projects
+   - **Vendor PSIRT**: For coordinated disclosure
+   - **NVD**: After CVE assignment
+
+4. **Store structured data**:
+   - Vulnerability metadata (for tracking)
+   - POC metadata (version, target, impact)
+   - Verification results (success/failure, evidence)
 
 ## Data Storage
 
@@ -292,20 +590,57 @@ For each SubAgent, create a dedicated workspace with:
 
 Use the `superpowers:dispatching-parallel-agents` skill when modules are independent.
 
+## SubAgent Completion Notification (Push Model)
+
+**Important**: SubAgents must **actively notify** the MainAgent upon completion, not wait for polling.
+
+**Push Mechanism**:
+- When a SubAgent completes its audit, it sends its report back to the MainAgent immediately
+- MainAgent aggregates reports as they arrive (real-time)
+- After all SubAgents complete, MainAgent sends consolidated summary to user
+
+**Benefits**:
+- User receives timely updates without waiting for all agents
+- MainAgent can track progress in real-time
+- Failed agents are detected quickly
+
+**Implementation**:
+```
+SubAgent completes → Returns report → MainAgent receives → Aggregates → Waits for remaining
+                                                              ↓
+                                                    All complete → User summary
+```
+
+---
+
 ## Error Handling
 
 - **Clone failures**: Report to user, skip repository
-- **SubAgent timeout**: Retry once, then mark as incomplete
-- **Docker failures**: Fall back to static analysis only
-- **POC execution errors**: Log output, mark verification as failed
+- **SubAgent timeout**: Retry once, then mark as incomplete (focus on other modules)
+- **Docker failures**: Fall back to static analysis + POC only (no verification)
+- **POC execution errors**: Log output, mark verification as failed (still include POC in submission)
+- **CVE rejection**: If CVE is rejected, analyze reason and adjust discovery strategy
 
 ## Output Delivery
 
 Present to user:
-1. Summary report (inline or as file)
-2. Link to full reports directory
-3. List of POC scripts created
-4. (Optional) Verification results
+
+1. **CVE Submission Report** (primary deliverable)
+   - CVE-worthy vulnerabilities only
+   - Weaponized POCs
+   - CVSS scoring
+   - Submission-ready format
+
+2. **Individual Vulnerability Reports** (detailed technical analysis)
+
+3. **Weaponized POC Scripts** (ready for demonstration)
+
+4. **(Optional) Verification Results** (if Docker environment was used)
+
+5. **CVE Submission Guidance**:
+   - Recommended CNAs for submission
+   - Coordinated disclosure timeline
+   - Vendor contact templates
 
 ---
 
