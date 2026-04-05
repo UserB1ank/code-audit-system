@@ -1,31 +1,33 @@
 ---
 name: code-audit-system
-description: CVE-oriented multi-agent code audit system. Use when user provides a git repository URL for vulnerability discovery with the goal of submitting CVEs. This skill orchestrates subagents to find exploitable vulnerabilities (RCE, SQLi, Auth Bypass, etc.), write weaponized POCs, and generate CVE-ready reports. ALWAYS use this skill when the user mentions code auditing, vulnerability hunting, CVE discovery, or provides a git URL for security review.
+description: 以 CVE 为导向的多 Agent 代码审计系统。当用户提供 git 仓库 URL 进行漏洞发现、提交 CVE 时使用。本系统协调子 Agent 发现可利用漏洞（RCE、SQLi、Auth Bypass 等）、编写武器化 POC、生成 CVE 就绪报告。当用户提到代码审计、漏洞挖掘、CVE 发现，或提供 git URL 进行安全审查时，必须使用此 Skill。
 ---
 
-# Code Audit System - CVE Discovery Engine
+# 代码审计系统 - CVE 发现引擎
+
+> 所有的输出必须是中文！
 
 **核心理念**: 只报告可实际利用的漏洞，目标是提交 CVE，而非让代码变得更安全。
 
-This skill orchestrates a multi-agent system to discover exploitable vulnerabilities with the sole purpose of CVE submission. It filters out theoretical issues and focuses only on vulnerabilities with complete exploit chains.
+本 Skill 协调多 Agent 系统发现可利用漏洞，唯一的目的是 CVE 提交。它过滤掉理论问题，只关注具有完整漏洞利用链的漏洞。
 
-## ⭐ CVE-Oriented Audit Principles
+## ⭐ CVE 导向审计原则
 
-### 核心原则 (必须遵守)
+### 核心原则（必须遵守）
 
 1. **只报告可实际利用的漏洞**
-   - ✅ 有明确用户输入入口 (Source)
-   - ✅ 有完整调用链 (Source → Sink)
+   - ✅ 有明确用户输入入口（Source）
+   - ✅ 有完整调用链（Source → Sink）
    - ✅ 无有效安全控制阻断
    - ✅ 可编写可执行 POC
-   - ❌ 拒绝理论漏洞 (无输入入口)
-   - ❌ 拒绝潜在漏洞 (需要不可能的条件)
+   - ❌ 拒绝理论漏洞（无输入入口）
+   - ❌ 拒绝潜在漏洞（需要不可能的条件）
    - ❌ 拒绝被安全控制完全阻断的漏洞
 
 2. **CVE 提交标准**
-   - 目标：CVSS ≥ 7.0 (High/Critical)
+   - 目标：CVSS ≥ 7.0（高危/严重）
    - 必须有 POC 验证
-   - 必须影响真实用户 (非本地/测试环境)
+   - 必须影响真实用户（非本地/测试环境）
    - 必须有明确受影响版本
 
 3. **深度优于广度**
@@ -39,72 +41,71 @@ This skill orchestrates a multi-agent system to discover exploitable vulnerabili
 |------|--------|------|
 | 可利用漏洞 | ✅ 报告 | 有入口 + 无阻断 + 可 POC |
 | 理论漏洞 | ❌ 丢弃 | 无用户输入入口 |
-| 潜在漏洞 | ❌ 丢弃 | 需要特殊/不可能的条件 |
+| 潜在漏洞 | ❌ 丢弃 | 需要特殊/不可能条件 |
 | 被阻断漏洞 | ❌ 丢弃 | 有有效安全控制 |
 
 ---
 
-## When to Use This Skill
+## 何时使用本 Skill
 
-- User provides a git repository URL for **CVE discovery**
-- User requests **exploitable vulnerability** hunting
-- User wants to find **CVE-worthy** issues (RCE, SQLi, Auth Bypass, etc.)
-- User needs **weaponized POC** code for identified vulnerabilities
-- User wants **CVE-ready reports** with exploitation details
+- 用户提供 git 仓库 URL 进行 **CVE 发现**
+- 用户请求 **可利用漏洞** 挖掘
+- 用户想找到 **CVE 级别** 的问题（RCE、SQLi、Auth Bypass 等）
+- 用户需要 **武器化 POC** 代码
+- 用户需要 **CVE 就绪报告**，包含漏洞利用详情
 
-## System Architecture
+## 系统架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Main Agent                                │
-│  - Orchestrates workflow                                         │
-│  - Manages subagent workspaces                                   │
-│  - Coordinates module detection                                  │
-│  - Aggregates reports                                            │
-│  - Interfaces with user                                          │
+│                        主 Agent                                   │
+│  - 协调工作流程                                                   │
+│  - 管理子 Agent 工作区                                           │
+│  - 协调模块检测                                                  │
+│  - 聚合报告                                                     │
+│  - 与用户交互                                                    │
 └─────────────────────────────────────────────────────────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
         │                     │                     │
         ▼                     ▼                     ▼
 ┌───────────────┐   ┌─────────────────┐   ┌───────────────┐
-│  SubAgent 1   │   │   SubAgent 2    │   │  SubAgent N   │
-│  Module A     │   │   Module B      │   │  Module N     │
-│  Vulnerability│   │   Vulnerability │   │  Vulnerability│
-│  Scanner      │   │   Scanner       │   │  Scanner      │
+│  子 Agent 1   │   │   子 Agent 2    │   │  子 Agent N   │
+│  模块 A       │   │   模块 B        │   │   模块 N      │
+│  漏洞扫描器   │   │   漏洞扫描器    │   │   漏洞扫描器  │
 └───────────────┘   └─────────────────┘   └───────────────┘
 ```
 
-## Workflow Overview
+## 工作流程概述
 
-1. **Project Collection** - User provides git URLs
-2. **Vulnerability Discovery** - SubAgents audit code modules
-3. **Environment Deployment** (optional) - Docker setup
-4. **POC Writing** - SubAgents write exploit scripts
-5. **Verification** (optional) - Test POCs against deployed environment
-6. **Summary Report** - MainAgent aggregates all findings
+1. **项目收集** - 用户提供 git URL
+2. **漏洞发现** - 子 Agent 审计代码模块
+3. **环境部署**（可选）- Docker 安装
+4. **POC 编写** - 子 Agent 编写漏洞利用脚本
+5. **验证**（可选）- 在部署环境中测试 POC
+6. **总结报告** - 主 Agent 聚合所有发现
 
-## Step-by-Step Instructions
+## 步骤详解
 
-### Step 1: Project Initialization (强制标准目录结构)
+### 步骤 1：项目初始化（标准目录结构）
 
 **⚠️ 重要**: 必须严格遵守标准目录结构，参考 `references/project-structure.md`
 
-When the user provides a git repository URL:
+当用户提供 git 仓库 URL 时：
 
 1. **创建标准项目目录**:
    ```bash
    mkdir -p code-audit-projects/<project-name>/{source,state,workspace,pocs,reports,docker}
    ```
 
-2. **克隆源代码到 source/** (必须):
+2. **克隆源代码到 source/**（必须）:
    ```bash
    cd code-audit-projects/<project-name>/
    git clone <git-url> source/
    ```
-   
-   **❌ 错误**: `git clone <url> .` (直接克隆到根目录)  
-   **✅ 正确**: `git clone <url> source/` (克隆到 source/ 子目录)
+
+   **❌ 错误**: `git clone <url> .`（直接克隆到根目录）
+   **✅ 正确**: `git clone <url> source/`（克隆到 source/ 子目录）
 
 3. **创建 metadata.json**:
    ```json
@@ -122,19 +123,19 @@ When the user provides a git repository URL:
    }
    ```
 
-4. **创建技术背景文档** (MainAgent 负责):
+4. **创建技术背景文档**（主 Agent 负责）:
    - `workspace/00-work-background.md` - 技术栈、攻击面、CVE 发现策略
    - `workspace/01-module-map.md` - 模块划分、文件映射
 
-5. **创建状态文件** (必须，支持断点续传):
+5. **创建状态文件**（必须，支持断点续传）:
    - `state/audit-state.json` - 审计状态追踪 ⭐
    - `state/task-history.jsonl` - 事件历史日志 ⭐
 
 **状态文件作用**:
-- ✅ 记录审计进度 (阶段、子 Agent 状态、漏洞发现)
-- ✅ 支持断点续传 (崩溃/暂停后恢复)
-- ✅ 定期保存检查点 (`state/checkpoint-<timestamp>.json`)
-- ✅ 实时日志追加 (`task-history.jsonl`)
+- ✅ 记录审计进度（阶段、子 Agent 状态、漏洞发现）
+- ✅ 支持断点续传（崩溃/暂停后恢复）
+- ✅ 定期保存检查点（`state/checkpoint-<timestamp>.json`）
+- ✅ 实时日志追加（`task-history.jsonl`）
 
 **暂停/恢复流程**:
 ```bash
@@ -150,12 +151,12 @@ cat state/audit-state.json | jq '.subagents[] | select(.status == "running")'
 # 重启未完成的子 Agent，继续审计
 ```
 
-**Read**: `state/audit-state-schema.md` for complete state file format.
+**Read**: `references/state/audit-state-schema.md` 查看完整状态文件格式
 
 **完整目录结构**:
 ```
 code-audit-projects/<project-name>/
-├── source/              # ✅ 源代码 (git clone 必须到此)
+├── source/              # ✅ 源代码（git clone 必须到此）
 ├── state/               # ✅ 状态追踪
 │   ├── audit-state.json
 │   └── task-history.jsonl
@@ -165,85 +166,85 @@ code-audit-projects/<project-name>/
 │   └── agent-<module>/
 │       ├── skill.md
 │       └── report.md
-├── pocs/                # ✅ POC 脚本 (CVE 验证后)
-├── reports/             # ✅ CVE 报告 (最终输出)
+├── pocs/                # ✅ POC 脚本（CVE 验证后）
+├── reports/             # ✅ CVE 报告（最终输出）
 └── metadata.json        # ✅ 项目元数据
 ```
 
-**Read**: `references/project-structure.md` for complete directory standards.
+**Read**: `references/project-structure.md` 查看完整目录标准
 
-### Step 2: CVE Discovery (Main Process)
+### 步骤 2：CVE 发现（主流程）
 
-This is the core vulnerability hunting phase. The MainAgent coordinates multiple SubAgents.
+这是核心漏洞挖掘阶段。主 Agent 协调多个子 Agent。
 
-#### Phase 2.1: Technology Reconnaissance
+#### 阶段 2.1：技术侦察
 
-Analyze the project for CVE discovery:
+分析项目进行 CVE 发现：
 
-1. **Identify programming languages** - Scan file extensions, package files
-2. **Detect frameworks and components** - Check package.json, requirements.txt, pom.xml, etc.
-3. **Determine application type** - Web app, system service, GUI, mobile, etc.
-4. **Map attack surface** - User input points, auth mechanisms, file operations, network interfaces
+1. **识别编程语言** - 扫描文件扩展名、包文件
+2. **检测框架和组件** - 检查 package.json、requirements.txt、pom.xml 等
+3. **确定应用类型** - Web 应用、系统服务、GUI、移动端等
+4. **绘制攻击面** - 用户输入点、认证机制、文件操作、网络接口
 
-Create a **Work Background** document at `workspace/00-work-background.md` containing:
-- Technology stack summary
-- Application type classification
-- **Attack surface map** (entry points, trust boundaries)
-- **High-risk areas** (auth, file ops, serialization, command execution)
+在 `workspace/00-work-background.md` 创建**工作背景**文档：
+- 技术栈总结
+- 应用类型分类
+- **攻击面地图**（入口点、信任边界）
+- **高风险区域**（认证、文件操作、序列化、命令执行）
 
-**Use**: `references/module-detection.md` for module structure templates by project type.
+**Use**: `references/module-detection.md` 查看按项目类型的模块结构模板
 
-#### Phase 2.2: Module Partitioning
+#### 阶段 2.2：模块划分
 
-Partition the codebase into logical modules for parallel auditing:
+将代码库划分为逻辑模块以便并行审计：
 
-1. Identify module boundaries from directory structure
-2. Map files to each module
-3. Identify inter-module dependencies
-4. Create module dependency graph
+1. 从目录结构识别模块边界
+2. 将文件映射到各模块
+3. 识别模块间依赖
+4. 创建模块依赖图
 
-Store module mapping at `workspace/01-module-map.md`.
+在 `workspace/01-module-map.md` 存储模块映射
 
-#### Phase 2.3: SubAgent Dispatch (CVE Hunters)
+#### 阶段 2.3：子 Agent 调度（CVE 猎人）
 
 **⚠️ 目录结构要求**: 必须使用标准工作区布局
 
-**MainAgent 必须为每个子 Agent 创建独立背景文档**
+**主 Agent 必须为每个子 Agent 创建独立背景文档**
 
-For each module, create a dedicated SubAgent workspace:
+为每个模块创建专用子 Agent 工作区：
 
 ```
 workspace/
-├── 00-work-background.md        # ✅ MainAgent 创建 (全局技术侦察)
-├── 01-module-map.md             # ✅ MainAgent 创建 (模块划分)
+├── 00-work-background.md        # ✅ 主 Agent 创建（全局技术侦察）
+├── 01-module-map.md             # ✅ 主 Agent 创建（模块划分）
 ├── agent-<module-1>/            # ✅ 子 Agent 1 工作区
-│   ├── background.md            # MainAgent 创建 (独立背景文档) ⭐
-│   ├── skill.md                 # MainAgent 创建 (审计指令)
-│   ├── execution.log          # ⭐ 子 Agent 执行日志 (自动保存)
-│   └── report.md                # 子 Agent 输出 (CVE 报告)
+│   ├── background.md            # 主 Agent 创建（独立背景文档）⭐
+│   ├── skill.md                 # 主 Agent 创建（审计指令）
+│   ├── execution.log            # ⭐ 子 Agent 执行日志（自动保存）
+│   └── report.md                # 子 Agent 输出（CVE 报告）
 ├── agent-<module-2>/            # ✅ 子 Agent 2 工作区
 │   ├── background.md            # ⭐ 新增
-│   ├── execution.log          # ⭐ 新增
+│   ├── execution.log            # ⭐ 新增
 │   └── report.md
 └── agent-<module-N>/            # ✅ 子 Agent N 工作区
     ├── background.md            # ⭐ 新增
-    ├── execution.log          # ⭐ 新增
+    ├── execution.log            # ⭐ 新增
     └── report.md
 ```
 
-**Dispatch Strategy**:
-- If modules have NO dependencies on each other → dispatch in parallel using thread pool
-- If modules have dependencies → dispatch in dependency order
+**调度策略**:
+- 如果模块之间**没有依赖** → 使用线程池并行调度
+- 如果模块之间**有依赖** → 按依赖顺序调度
 
-**Read**: 
-- `templates/subagent-skill-template.md` for creating SubAgent skills
-- `templates/subagent-background-template.md` for creating background documents ⭐
+**Read**:
+- `templates/subagent/subagent-skill-template.md` - 创建子 Agent skill
+- `templates/subagent/subagent-background-template.md` - 创建背景文档
 
 ---
 
-### MainAgent 创建子 Agent 背景文档 (必须)
+### 主 Agent 创建子 Agent 背景文档（必须）
 
-**每个子 Agent 启动前**, MainAgent 必须创建 `workspace/agent-<module>/background.md`，包含：
+**每个子 Agent 启动前**，主 Agent 必须创建 `workspace/agent-<module>/background.md`：
 
 #### 1. 模块涉及文件列表
 
@@ -360,234 +361,234 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
 
 ---
 
-**SubAgent Instructions Must Include**:
-- **目标源代码路径** (绝对路径): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/source/<module>/`
-- **报告输出位置** (绝对路径): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/report.md`
-- **背景文档位置** (必须阅读): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/background.md`
-- Focus on exploitable vulnerabilities only
-- Trace complete call chains (Source → Sink)
-- Document security controls and bypass methods
-- Filter out theoretical issues
+**子 Agent 指令必须包含**:
+- **目标源代码路径**（绝对路径）: `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/source/<module>/`
+- **报告输出位置**（绝对路径）: `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/report.md`
+- **背景文档位置**（必须阅读）: `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/background.md`
+- 仅关注可利用漏洞
+- 追踪完整调用链（Source → Sink）
+- 记录安全控制及绕过方法
+- 过滤理论问题
 
-#### Phase 2.4: CVE-Ready Vulnerability Report
+#### 阶段 2.4：CVE 就绪漏洞报告
 
-Each SubAgent must produce a **CVE-ready report** covering:
+每个子 Agent 必须生成 **CVE 就绪报告**：
 
-| Field | Description |
-|-------|-------------|
-| **Vulnerability Type** | RCE, SQLi, Auth Bypass, Path Traversal, etc. |
-| **Exploitability** | ✅ Exploitable / ❌ Theoretical |
-| **Authentication Required** | None / Low-Priv / High-Priv |
-| **Location** | File path and line numbers (e.g., `auth/login.py:45-52`) |
-| **Call Chain** | Complete: `userInput() → process() → sink()` |
-| **Security Controls** | What exists, how to bypass |
-| **Severity** | Critical/High (CVE-worthy) / Medium / Low |
-| **CVSS Score** | Base score 0.0-10.0 (aim for ≥7.0) |
-| **POC Feasibility** | ✅ Can weaponize / ❌ Cannot weaponize |
-| **Evidence** | Code snippets with line numbers |
+| 字段 | 描述 |
+|-----|------|
+| **漏洞类型** | RCE、SQLi、Auth Bypass、Path Traversal 等 |
+| **可利用性** | ✅ 可利用 / ❌ 理论 |
+| **需要认证** | 无 / 低权限 / 高权限 |
+| **位置** | 文件路径和行号（如 `auth/login.py:45-52`） |
+| **调用链** | 完整：`userInput() → process() → sink()` |
+| **安全控制** | 存在什么、如何绕过 |
+| **严重性** | Critical/High（CVE 级别）/ Medium / Low |
+| **CVSS 评分** | 基础分 0.0-10.0（目标 ≥7.0） |
+| **POC 可行性** | ✅ 可武器化 / ❌ 无法武器化 |
+| **证据** | 带行号的代码片段 |
 
-**Use**: `templates/vulnerability-report-template.md` for report format.
+**Use**: `templates/reports/vulnerability-report-template.md` 查看报告格式
 
-**CVE Submission Criteria**:
-- CVSS ≥ 7.0 (High/Critical)
-- Affects real users (not local/test only)
-- Has clear affected versions
-- Can be demonstrated with POC
+**CVE 提交标准**:
+- CVSS ≥ 7.0（高危/严重）
+- 影响真实用户（非本地/测试）
+- 有明确的受影响版本
+- 可以用 POC 演示
 
-### Step 3: Environment Deployment (Optional - Ask User)
+### 步骤 3：环境部署（可选 - 询问用户）
 
-Before proceeding, ask the user:
-> "Do you want to deploy the target application in a Docker environment for vulnerability verification? This allows testing POCs in an isolated environment."
+继续之前先询问用户：
+> "是否要在 Docker 环境中部署目标应用进行漏洞验证？这允许在隔离环境中测试 POC。"
 
-If user confirms:
+如果用户确认：
 
-1. **Check for existing Docker config** - Look for Dockerfile, docker-compose.yml
-2. **Create Docker environment** if none exists:
-   - Analyze application dependencies
-   - Write appropriate Dockerfile
-   - Create docker-compose.yml with service dependencies (MySQL, Neo4j, etc.)
+1. **检查现有 Docker 配置** - 查找 Dockerfile、docker-compose.yml
+2. **创建 Docker 环境**（如不存在）:
+   - 分析应用依赖
+   - 编写适当的 Dockerfile
+   - 创建 docker-compose.yml（含 MySQL、Neo4j 等服务依赖）
 
-3. **Deploy using skills**:
-   - Use `docker-essentials` skill for container setup
-   - Use `docker-sandbox` skill for isolated testing environment
+3. **使用 skills 部署**:
+   - 使用 `docker-essentials` skill 进行容器设置
+   - 使用 `docker-sandbox` skill 进行隔离测试环境
 
-4. **Start the environment**:
+4. **启动环境**:
    ```bash
    docker-compose up -d
    ```
 
-**Store**: Docker configs at `workspace/docker/`
+**Store**: Docker 配置到 `workspace/docker/`
 
-### Step 4: Weaponized POC Writing
+### 步骤 4：武器化 POC 编写
 
-Dispatch SubAgents to write **weaponized** proof-of-concept exploits for CVE submission:
+调度子 Agent 为 CVE 提交编写**武器化**概念验证漏洞利用：
 
-1. **Read vulnerability reports** from Step 2 (CVE-worthy only)
-2. **Create POC directory**: `<project-root>/pocs/`
-3. **For each CVE-worthy vulnerability**, create a Python script:
+1. **读取漏洞报告**（步骤 2 中的 CVE 级别报告）
+2. **创建 POC 目录**: `<project-root>/pocs/`
+3. **为每个 CVE 级别漏洞**创建 Python 脚本：
    - `poc-001-rce-auth-bypass.py`
    - `poc-002-sqli-admin-takeover.py`
    - `poc-003-path-traversal-rce.py`
 
-**POC Requirements (CVE Submission Standard)**:
-- Self-contained Python script (no external dependencies beyond requests)
-- Clear usage instructions with example command
-- Configurable target URL/host/port
-- **Weaponized by default** (demonstrates full impact)
-- Safe execution (no permanent damage, but proves exploit)
-- **Before/After evidence** (e.g., `whoami` output, file created, data extracted)
-- CVSS scoring justification in comments
+**POC 要求（CVE 提交标准）**:
+- 自包含 Python 脚本（除 requests 外无外部依赖）
+- 带有示例命令的清晰使用说明
+- 可配置目标 URL/主机/端口
+- **默认武器化**（展示完整影响）
+- 安全执行（无持久损害，但证明漏洞利用）
+- **执行前后证据**（如 `whoami` 输出、创建的文件、提取的数据）
+- 评论中的 CVSS 评分说明
 
-**POC Structure**:
+**POC 结构**:
 ```python
 #!/usr/bin/env python3
 """
-CVE-XXXX-XXXXX: [Vulnerability Name]
-Target: [Product] [Affected Versions]
-Author: [Your Name]
-CVSS: [Score] [Vector]
+CVE-XXXX-XXXXX: [漏洞名称]
+目标: [产品] [受影响版本]
+作者: [你的名字]
+CVSS: [评分] [向量]
 
-Usage: python3 poc.py -t http://target:port
+用法: python3 poc.py -t http://target:port
 
-Proof of Concept:
-- Before: [normal state]
-- Exploit: [action]
-- After: [compromised state]
+概念验证:
+- 执行前: [正常状态]
+- 漏洞利用: [动作]
+- 执行后: [被攻击状态]
 """
 ```
 
-**Read**: `templates/poc-template.py` for POC structure.
+**Read**: `templates/reports/poc-template.py` 查看 POC 结构
 
-**CVE Submission Package**:
-For each CVE-worthy vulnerability, prepare:
-1. POC script (weaponized)
-2. Video demonstration (optional but recommended)
-3. Technical writeup (impact, affected versions, mitigation)
-4. CVSS v3.1 scoring
+**CVE 提交包**:
+为每个 CVE 级别漏洞准备：
+1. POC 脚本（武器化）
+2. 视频演示（可选但推荐）
+3. 技术报告（影响、受影响版本、修复方案）
+4. CVSS v3.1 评分
 
-### Step 5: Vulnerability Verification (Optional - Ask User)
+### 步骤 5：漏洞验证（可选 - 询问用户）
 
-Ask the user:
-> "Do you want to verify the POCs against the deployed environment? This will test if each exploit works and produce a verification report."
+询问用户：
+> "是否要在部署环境中验证 POC？这将测试每个漏洞利用是否有效并生成验证报告。"
 
-If user confirms:
+如果用户确认：
 
-1. **Deploy target** (not done in Step 3)
-2. **Run each POC** in the docker-sandbox environment
-3. **Record results**:
-   - Success/Failure
-   - Output/evidence
-   - Time to exploit
+1. **部署目标**（步骤 3 未完成）
+2. **在沙盒环境中运行每个 POC**
+3. **记录结果**:
+   - 成功/失败
+   - 输出/证据
+   - 利用时间
 
-4. **Create verification report**: `reports/verification-report.md`
+4. **创建验证报告**: `reports/verification-report.md`
 
-Verification report extends vulnerability report with:
-- Verification status: "成功" (Success) / "失败" (Failure)
-- POC path: Full path to POC script
-- Execution output: Terminal output from POC run
-- Evidence: Screenshots, response data, etc.
+验证报告在漏洞报告基础上增加：
+- 验证状态："成功" / "失败"
+- POC 路径：POC 脚本完整路径
+- 执行输出：POC 运行时的终端输出
+- 证据：截图、响应数据等
 
-### Step 6: CVE Submission Report
+### 步骤 6：CVE 提交报告
 
-MainAgent aggregates all findings into a **CVE-ready submission package**:
+主 Agent 聚合所有发现生成 **CVE 提交包**：
 
-1. **Collect all reports**:
-   - Individual vulnerability reports from SubAgents (CVE-worthy only)
-   - Weaponized POC scripts
-   - POC verification results (if verified)
+1. **收集所有报告**:
+   - 子 Agent 的单独漏洞报告（仅 CVE 级别）
+   - 武器化 POC 脚本
+   - POC 验证结果（如已验证）
 
-2. **Generate CVE Submission Report** at `reports/cve-submission-report.md`:
+2. **在 `reports/cve-submission-report.md` 生成 CVE 提交报告**:
 
 ```markdown
-# CVE Submission Report
+# CVE 提交报告
 
-## Project Overview
-- **Product**: [Product Name]
-- **Repository**: <git-url>
-- **Vendor**: [Vendor Name]
-- **Audit Date**: <date>
-- **Auditor**: [Your Name/Handle]
+## 项目概述
+- **产品**: [产品名称]
+- **仓库**: <git-url>
+- **供应商**: [供应商名称]
+- **审计日期**: <日期>
+- **审计员**: [你的名字/昵称]
 
-## Executive Summary (CVE Focus)
-- **CVE-Worthy Vulnerabilities**: <count> (CVSS ≥ 7.0)
-- **Critical (CVSS 9.0-10.0)**: <count>
-- **High (CVSS 7.0-8.9)**: <count>
-- **Total POCs Weaponized**: <count>
+## 执行摘要（CVE 重点）
+- **CVE 级别漏洞**: <数量>（CVSS ≥ 7.0）
+- **严重（CVSS 9.0-10.0）**: <数量>
+- **高危（CVSS 7.0-8.9）**: <数量>
+- **武器化 POC 总数**: <数量>
 
-## CVE Candidates
+## CVE 候选
 
-| ID | Type | CVSS | Affected Versions | POC | Status |
+| ID | 类型 | CVSS | 受影响版本 | POC | 状态 |
 |----|------|------|-------------------|-----|--------|
-| CVE-XXXX-XXXXX | RCE | 9.8 | v1.0-v2.3 | ✅ | Ready to submit |
-| CVE-XXXX-XXXXX | Auth Bypass | 8.5 | v1.5-v2.3 | ✅ | Ready to submit |
+| CVE-XXXX-XXXXX | RCE | 9.8 | v1.0-v2.3 | ✅ | 准备提交 |
+| CVE-XXXX-XXXXX | Auth Bypass | 8.5 | v1.5-v2.3 | ✅ | 准备提交 |
 
-## Detailed CVE Reports
+## 详细 CVE 报告
 
-### CVE-XXXX-XXXXX: [Vulnerability Name]
+### CVE-XXXX-XXXXX: [漏洞名称]
 
-**Severity**: Critical (CVSS 9.8)  
-**Vector**: AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H  
-**Affected Versions**: v1.0 - v2.3  
-**Fixed Versions**: [If known]  
+**严重性**: 严重（CVSS 9.8）
+**向量**: AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+**受影响版本**: v1.0 - v2.3
+**修复版本**: [如有]
 
-**Technical Details**:
-- **Location**: `file.py:line`
-- **Root Cause**: [Brief description]
-- **Attack Vector**: [How attacker exploits]
-- **Impact**: [What attacker achieves]
+**技术详情**:
+- **位置**: `file.py:line`
+- **根因**: [简要描述]
+- **攻击向量**: [攻击者如何利用]
+- **影响**: [攻击者实现什么]
 
-**Call Chain**:
+**调用链**:
 ```
 userInput() → vulnerable_function() → sink()
 ```
 
 **POC**: `pocs/poc-001-rce.py`
 
-**Verification**: ✅ Successful (see verification report)
+**验证**: ✅ 成功（见验证报告）
 
-**Mitigation**: [Vendor remediation steps]
+**修复方案**: [供应商修复步骤]
 
-## Submission Checklist
+## 提交清单
 
-For each CVE:
-- [ ] Technical writeup complete
-- [ ] POC weaponized and tested
-- [ ] CVSS v3.1 scoring calculated
-- [ ] Affected versions confirmed
-- [ ] Vendor contact info (if coordinated disclosure)
-- [ ] Video demonstration (optional)
+每个 CVE:
+- [ ] 技术报告完整
+- [ ] POC 武器化并测试
+- [ ] CVSS v3.1 评分已计算
+- [ ] 受影响版本已确认
+- [ ] 供应商联系信息（如协调披露）
+- [ ] 视频演示（可选）
 
-## Appendix
-- Full reports: `reports/vulnerability-*.md`
-- Weaponized POCs: `pocs/`
-- Verification: `reports/verification-report.md`
-- Call graphs: `reports/call-graphs/` (if available)
+## 附录
+- 完整报告: `reports/vulnerability-*.md`
+- 武器化 POC: `pocs/`
+- 验证: `reports/verification-report.md`
+- 调用图: `reports/call-graphs/`（如有）
 ```
 
-3. **CVE Submission Targets**:
-   - **MITRE**: Primary CVE CNA
-   - **GitHub Security Advisories**: For open source projects
-   - **Vendor PSIRT**: For coordinated disclosure
-   - **NVD**: After CVE assignment
+3. **CVE 提交目标**:
+   - **MITRE**: 主要 CVE CNA
+   - **GitHub 安全公告**: 开源项目
+   - **供应商 PSIRT**: 协调披露
+   - **NVD**: CVE 分配后
 
-4. **Store structured data**:
-   - Vulnerability metadata (for tracking)
-   - POC metadata (version, target, impact)
-   - Verification results (success/failure, evidence)
+4. **存储结构化数据**:
+   - 漏洞元数据（用于跟踪）
+   - POC 元数据（版本、目标、影响）
+   - 验证结果（成功/失败、证据）
 
-## Data Storage
+## 数据存储
 
-### MySQL Schema (Structured Data)
+### MySQL 模式（结构化数据）
 
-Tables needed:
-- `vulnerabilities` - Core vulnerability records
-- `pocs` - POC script metadata
-- `verifications` - Verification results
-- `projects` - Project metadata
+需要的表：
+- `vulnerabilities` - 核心漏洞记录
+- `pocs` - POC 脚本元数据
+- `verifications` - 验证结果
+- `projects` - 项目元数据
 
-### Neo4j Schema (Relationship Data)
+### Neo4j 模式（关系数据）
 
-Model call chains as:
+将调用链建模为：
 ```
 (Node:Function {name: "userInput", output: "string"})
   -[:CALLS]->
@@ -596,59 +597,59 @@ Model call chains as:
 (Node:Function {name: "executeQuery", output: "result"})
 ```
 
-Each entity has:
-- Properties for input parameters
-- Output as property or edge label
-- Source location (file:line)
+每个实体有：
+- 输入参数属性
+- 输出作为属性或边标签
+- 源位置（file:line）
 
-## SubAgent Workspace Creation
+## 子 Agent 工作区创建
 
-For each SubAgent, create a dedicated workspace with:
+为每个子 Agent 创建专用工作区：
 
-1. **skill.md** - Module-specific audit instructions
-2. **work-background.md** - Technology context
-3. **module-info.md** - File list, responsibilities, interfaces
-4. **report.md** - Output template
+1. **skill.md** - 模块特定审计指令
+2. **background.md** - 技术上下文
+3. **module-info.md** - 文件列表、职责、接口
+4. **report.md** - 输出模板
 
-Use the `superpowers:dispatching-parallel-agents` skill when modules are independent.
+当模块独立时，使用 `superpowers:dispatching-parallel-agents` skill
 
-## SubAgent Completion Notification (Push Model)
+## 子 Agent 完成通知（推送模型）
 
-**Important**: SubAgents must **actively notify** the MainAgent upon completion, not wait for polling.
+**重要**: 子 Agent 必须在完成时**主动通知**主 Agent，而不是等待轮询。
 
-**Push Mechanism**:
-- When a SubAgent completes its audit, it sends its report back to the MainAgent immediately
-- MainAgent aggregates reports as they arrive (real-time)
-- After all SubAgents complete, MainAgent sends consolidated summary to user
+**推送机制**:
+- 子 Agent 完成审计时，立即将报告发送回主 Agent
+- 主 Agent 实时聚合收到的报告
+- 所有子 Agent 完成后，主 Agent 向用户发送汇总摘要
 
-**Benefits**:
-- User receives timely updates without waiting for all agents
-- MainAgent can track progress in real-time
-- Failed agents are detected quickly
+**好处**:
+- 用户无需等待所有 Agent 即可收到及时更新
+- 主 Agent 可以实时跟踪进度
+- 快速检测失败的 Agent
 
-**Implementation**:
+**实现**:
 ```
-SubAgent completes → Returns report → MainAgent receives → Aggregates → Waits for remaining
+子 Agent 完成 → 返回报告 → 主 Agent 接收 → 聚合 → 等待剩余
                                                               ↓
-                                                    All complete → User summary
+                                                    全部完成 → 用户摘要
 ```
 
 ---
 
-## ⏰ Auto-Reminder Mechanism (自动提醒机制)
+## ⏰ 自动提醒机制
 
 **触发条件**: 审计完成后，用户未指示下一步操作
 
-### Reminder Schedule
+### 提醒计划
 
 | 时间点 | 行为 |
 |--------|------|
 | 完成时 | 显示审计结果 + 下一步建议选项 |
-| +1 小时 | 询问是否需要继续 (POC 开发/CVE 提交) |
+| +1 小时 | 询问是否需要继续（POC 开发/CVE 提交）|
 | +2 小时 | 再次提醒 + 强调 Critical 漏洞风险 |
 | +3 小时 | 最后提醒 + 建议暂停/归档项目 |
 
-### Reminder Message Template
+### 提醒消息模板
 
 ```markdown
 🔒 **PHPok 代码审计 - 等待指示**
@@ -665,7 +666,7 @@ SubAgent completes → Returns report → MainAgent receives → Aggregates → 
 需要我执行哪项操作？
 ```
 
-### Implementation
+### 实现
 
 **主 Agent 职责**:
 1. 审计完成后记录完成时间到 `state/audit-state.json`
@@ -690,45 +691,98 @@ SubAgent completes → Returns report → MainAgent receives → Aggregates → 
 **取消条件**:
 - 用户明确指示下一步操作
 - 用户要求停止/暂停
-- 达到最大提醒次数 (3 次)
+- 达到最大提醒次数（3 次）
 
 ---
 
-## Error Handling
+## 错误处理
 
-- **Clone failures**: Report to user, skip repository
-- **SubAgent timeout**: Retry once, then mark as incomplete (focus on other modules)
-- **Docker failures**: Fall back to static analysis + POC only (no verification)
-- **POC execution errors**: Log output, mark verification as failed (still include POC in submission)
-- **CVE rejection**: If CVE is rejected, analyze reason and adjust discovery strategy
+- **克隆失败**: 报告给用户，跳过仓库
+- **子 Agent 超时**: 重试一次，然后标记为不完整（专注于其他模块）
+- **Docker 失败**: 回退到静态分析 + 仅 POC（无验证）
+- **POC 执行错误**: 记录输出，标记验证为失败（仍包含在提交中）
+- **CVE 拒绝**: 分析原因并调整发现策略
 
-## Output Delivery
+## 输出交付
 
-Present to user:
+向用户展示：
 
-1. **CVE Submission Report** (primary deliverable)
-   - CVE-worthy vulnerabilities only
-   - Weaponized POCs
-   - CVSS scoring
-   - Submission-ready format
+1. **CVE 提交报告**（主要交付物）
+   - 仅 CVE 级别漏洞
+   - 武器化 POC
+   - CVSS 评分
+   - 提交就绪格式
 
-2. **Individual Vulnerability Reports** (detailed technical analysis)
+2. **单独漏洞报告**（详细技术分析）
 
-3. **Weaponized POC Scripts** (ready for demonstration)
+3. **武器化 POC 脚本**（准备演示）
 
-4. **(Optional) Verification Results** (if Docker environment was used)
+4. **（可选）验证结果**（如使用了 Docker 环境）
 
-5. **CVE Submission Guidance**:
-   - Recommended CNAs for submission
-   - Coordinated disclosure timeline
-   - Vendor contact templates
+5. **CVE 提交指导**:
+   - 推荐用于提交的 CNA
+   - 协调披露时间线
+   - 供应商联系模板
 
 ---
 
-## Related Templates and References
+## 文件引用
 
-- `templates/vulnerability-report-template.md` - Report format
-- `templates/poc-template.py` - POC script structure
-- `templates/subagent-skill-template.md` - SubAgent skill template
-- `references/module-detection.md` - Module detection by project type
-- `references/project-structure.md` - Project storage structure
+### 引用文件总览
+
+| 分类 | 文件名 | 作用 | 路径 |
+|------|--------|------|------|
+| **Skill 核心** | SKILL.md | 主 Skill 文件，包含完整工作流程和调度指令 | `./SKILL.md` |
+| **References 参考文档** | | | |
+| | project-structure.md | 审计项目标准目录结构规范 | `./references/project-structure.md` |
+| | module-detection.md | 按项目类型的模块划分模板 | `./references/module-detection.md` |
+| | audit-state-schema.md | 状态文件格式规范（audit-state.json、task-history.jsonl）| `./references/state/audit-state-schema.md` |
+| **Templates 模板** | | | |
+| | work-background-template.md | 工作背景文档模板 | `./templates/work-background-template.md` |
+| **子 Agent 模板** | | | |
+| | subagent-skill-template.md | 子 Agent 审计指令模板 | `./templates/subagent/subagent-skill-template.md` |
+| | subagent-background-template.md | 子 Agent 独立背景文档模板 | `./templates/subagent/subagent-background-template.md` |
+| | execution-log-template.md | 子 Agent 执行日志格式规范 | `./templates/subagent/execution-log-template.md` |
+| | module-info-template.md | 模块信息文档模板 | `./templates/subagent/module-info-template.md` |
+| **报告模板** | | | |
+| | vulnerability-report-template.md | CVE 漏洞报告模板 | `./templates/reports/vulnerability-report-template.md` |
+| | summary-report-template.md | 综合 CVE 提交报告模板 | `./templates/reports/summary-report-template.md` |
+| | verification-report-template.md | POC 验证报告模板 | `./templates/reports/verification-report-template.md` |
+| | poc-template.py | POC 脚本结构模板 | `./templates/reports/poc-template.py` |
+| **Evals 评估** | | | |
+| | evals.json | Skill 测试用例 | `./evals/evals.json` |
+| | trigger-evals.json | Skill 触发评估集 | `./evals/trigger-evals.json` |
+
+---
+
+## 快速参考
+
+### 标准目录结构
+
+```
+code-audit-projects/<project-name>/
+├── source/                  # 源代码（git clone 必须到此目录）
+├── state/                   # 任务状态追踪（必须）
+│   ├── audit-state.json     # 审计状态
+│   └── task-history.jsonl   # 历史事件日志
+├── workspace/               # CVE Hunter 工作区（必须）
+│   ├── 00-work-background.md    # 技术侦察报告（主 Agent 创建）
+│   ├── 01-module-map.md         # 模块划分图（主 Agent 创建）
+│   ├── agent-<module-1>/        # 子 Agent 1 工作区
+│   │   ├── skill.md             # 子 Agent 审计指令
+│   │   └── report.md            # CVE 审计报告（子 Agent 输出）
+│   └── agent-<module-N>/        # 子 Agent N 工作区
+│       └── report.md
+├── pocs/                    # POC 脚本（CVE 验证后创建）
+├── reports/                 # 审计报告（最终输出）
+├── docker/                  # Docker 环境（可选）
+└── metadata.json            # 项目元数据（必须）
+```
+
+### 关键规则
+
+1. `git clone` 必须克隆到 `source/` 子目录
+2. 状态文件必须在 `state/` 目录
+3. 主 Agent 必须预先创建背景文档
+4. 每个子 Agent 必须有独立工作区
+5. 仅报告 CVE 级别漏洞（CVSS ≥ 7.0）
