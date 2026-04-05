@@ -361,9 +361,9 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
 ---
 
 **SubAgent Instructions Must Include**:
-- **目标源代码路径** (绝对路径): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/source/<module>/`
-- **报告输出位置** (绝对路径): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/report.md`
-- **背景文档位置** (必须阅读): `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/background.md`
+- **目标源代码路径** (绝对路径): `<project-root>/source/<module>/`
+- **报告输出位置** (绝对路径): `<project-root>/workspace/agent-<module>/report.md`
+- **背景文档位置** (必须阅读): `<project-root>/workspace/agent-<module>/background.md`
 - Focus on exploitable vulnerabilities only
 - Trace complete call chains (Source → Sink)
 - Document security controls and bypass methods
@@ -401,22 +401,69 @@ Before proceeding, ask the user:
 
 If user confirms:
 
-1. **Check for existing Docker config** - Look for Dockerfile, docker-compose.yml
+1. **Check for existing Docker config** - Look for Dockerfile, docker-compose.yml in the source repository
 2. **Create Docker environment** if none exists:
-   - Analyze application dependencies
-   - Write appropriate Dockerfile
-   - Create docker-compose.yml with service dependencies (MySQL, Neo4j, etc.)
+   - Analyze application dependencies (package files, build tool, runtime requirements)
+   - Write appropriate `Dockerfile`
+   - Create `docker-compose.yml` with service dependencies (MySQL, PostgreSQL, Neo4j, etc.)
 
-3. **Deploy using skills**:
-   - Use `docker-essentials` skill for container setup
-   - Use `docker-sandbox` skill for isolated testing environment
+3. **Write Docker files**:
+   - For a typical web application, create a multi-stage Dockerfile with build and runtime stages
+   - Use `docker-compose.yml` to define the application service plus database/dependency services
+   - Store Docker configs at `docker/` directory in the project
 
-4. **Start the environment**:
+4. **Example Dockerfile template**:
+   ```dockerfile
+   # Build stage
+   FROM maven:3.9-eclipse-temurin-21 AS builder
+   WORKDIR /app
+   COPY pom.xml .
+   RUN mvn dependency:go-offline
+   COPY src ./src
+   RUN mvn package -DskipTests
+
+   # Runtime stage
+   FROM eclipse-temurin:21-jre
+   WORKDIR /app
+   COPY --from=builder /app/target/*.jar app.jar
+   EXPOSE 8080
+   ENTRYPOINT ["java", "-jar", "app.jar"]
+   ```
+
+5. **Example docker-compose.yml template**:
+   ```yaml
+   version: '3.8'
+   services:
+     app:
+       build: .
+       ports:
+         - "8080:8080"
+       environment:
+         - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/appdb
+         - SPRING_DATASOURCE_USERNAME=appuser
+         - SPRING_DATASOURCE_PASSWORD=apppass
+       depends_on:
+         db:
+           condition: service_healthy
+     db:
+       image: postgres:16
+       environment:
+         POSTGRES_DB: appdb
+         POSTGRES_USER: appuser
+         POSTGRES_PASSWORD: apppass
+       healthcheck:
+         test: ["CMD-SHELL", "pg_isready -U appuser"]
+         interval: 5s
+         timeout: 5s
+         retries: 5
+   ```
+
+6. **Start the environment**:
    ```bash
    docker-compose up -d
    ```
 
-**Store**: Docker configs at `workspace/docker/`
+**Note**: If the target application has special requirements (e.g., specific middleware, caching layers, or complex networking), adapt the Docker configuration accordingly.
 
 ### Step 4: Weaponized POC Writing
 
@@ -473,7 +520,7 @@ Ask the user:
 If user confirms:
 
 1. **Deploy target** (not done in Step 3)
-2. **Run each POC** in the docker-sandbox environment
+2. **Run each POC** against the deployed Docker environment
 3. **Record results**:
    - Success/Failure
    - Output/evidence
