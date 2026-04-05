@@ -126,9 +126,31 @@ When the user provides a git repository URL:
    - `workspace/00-work-background.md` - 技术栈、攻击面、CVE 发现策略
    - `workspace/01-module-map.md` - 模块划分、文件映射
 
-5. **创建状态文件**:
-   - `state/audit-state.json` - 审计状态追踪
-   - `state/task-history.jsonl` - 事件历史日志
+5. **创建状态文件** (必须，支持断点续传):
+   - `state/audit-state.json` - 审计状态追踪 ⭐
+   - `state/task-history.jsonl` - 事件历史日志 ⭐
+
+**状态文件作用**:
+- ✅ 记录审计进度 (阶段、子 Agent 状态、漏洞发现)
+- ✅ 支持断点续传 (崩溃/暂停后恢复)
+- ✅ 定期保存检查点 (`state/checkpoint-<timestamp>.json`)
+- ✅ 实时日志追加 (`task-history.jsonl`)
+
+**暂停/恢复流程**:
+```bash
+# 暂停时保存检查点
+cp state/audit-state.json state/checkpoint-$(date +%Y%m%d-%H%M%S).json
+
+# 恢复时加载最近检查点
+cp state/checkpoint-<latest>.json state/audit-state.json
+
+# 分析未完成的子 Agent
+cat state/audit-state.json | jq '.subagents[] | select(.status == "running")'
+
+# 重启未完成的子 Agent，继续审计
+```
+
+**Read**: `state/audit-state-schema.md` for complete state file format.
 
 **完整目录结构**:
 ```
@@ -610,6 +632,65 @@ SubAgent completes → Returns report → MainAgent receives → Aggregates → 
                                                               ↓
                                                     All complete → User summary
 ```
+
+---
+
+## ⏰ Auto-Reminder Mechanism (自动提醒机制)
+
+**触发条件**: 审计完成后，用户未指示下一步操作
+
+### Reminder Schedule
+
+| 时间点 | 行为 |
+|--------|------|
+| 完成时 | 显示审计结果 + 下一步建议选项 |
+| +1 小时 | 询问是否需要继续 (POC 开发/CVE 提交) |
+| +2 小时 | 再次提醒 + 强调 Critical 漏洞风险 |
+| +3 小时 | 最后提醒 + 建议暂停/归档项目 |
+
+### Reminder Message Template
+
+```markdown
+🔒 **PHPok 代码审计 - 等待指示**
+
+**审计完成时间**: {completion_time}
+**发现漏洞**: {total_vulns} 个 (Critical: {critical_count})
+
+📋 待执行操作:
+1. 生成综合 CVE 提交报告 📄
+2. 开发 Top 5 POC 验证脚本 🔧
+3. 联系 PHPok 官方 (admin@phpok.com) 📧
+4. 提交 CVE 编号 (MITRE/CNVD) 🏷️
+
+需要我执行哪项操作？
+```
+
+### Implementation
+
+**主 Agent 职责**:
+1. 审计完成后记录完成时间到 `state/audit-state.json`
+2. 设置提醒标记 `reminder_pending: true`
+3. 每次用户消息到达时检查是否超过 1 小时
+4. 如超时而用户无新指令，发送提醒消息
+
+**状态追踪**:
+```json
+{
+  "reminder": {
+    "enabled": true,
+    "interval_hours": 1,
+    "max_reminders": 3,
+    "sent_count": 0,
+    "last_reminder": null,
+    "next_reminder": "2026-04-05T14:00:00+08:00"
+  }
+}
+```
+
+**取消条件**:
+- 用户明确指示下一步操作
+- 用户要求停止/暂停
+- 达到最大提醒次数 (3 次)
 
 ---
 
