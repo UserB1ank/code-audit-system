@@ -772,10 +772,23 @@ Present to user:
 
 ---
 
-## Related Templates and References
+## 语言特定漏洞参考
 
-- `templates/vulnerability-report-template.md` - Report format
-- `templates/poc-template.py` - POC script structure
-- `templates/subagent-skill-template.md` - SubAgent skill template
-- `references/module-detection.md` - Module detection by project type
-- `references/project-structure.md` - Project storage structure
+审计特定编程语言时，查阅这些指南获取语言特定的漏洞模式：
+
+| 语言 | 指南 | 内容 |
+|------|------|------|
+| PHP | `references/php-guide.md` | SQL 注入、命令注入、文件包含、XSS、反序列化、路径穿越、SSRF、认证问题 |
+| Java | `references/java-guide.md` | SQL 注入、命令注入、XXE、反序列化、路径穿越、SSRF、SSTI、JNDI 注入、Spring 特定问题 |
+
+**重要**: 语言指南包含每种漏洞类型的 Source → Sink 模式。子 Agent 在审计该语言代码时必须查阅相关语言指南。
+
+## 相关模板和参考
+
+- `templates/vulnerability-report-template.md` - 报告格式
+- `templates/poc-template.py` - POC 脚本结构
+- `templates/subagent-skill-template.md` - 子 Agent 技能模板
+- `references/module-detection.md` - 按项目类型的模块检测
+- `references/project-structure.md` - 项目存储结构
+- `references/php-guide.md` - PHP 漏洞模式 (Source → Sink)
+- `references/java-guide.md` - Java 漏洞模式 (Source → Sink)
