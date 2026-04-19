@@ -11,8 +11,8 @@
 | 字段 | 值 |
 |------|-----|
 | **模块名称** | `<module-name>` |
-| **源代码路径** | `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/source/<module-path>/` |
-| **报告输出位置** | `/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/<project>/workspace/agent-<module>/report.md` |
+| **源代码路径** | `<project-root>/source/<module-path>/` |
+| **报告输出位置** | `<project-root>/workspace/agent-<module>/report.md` |
 | **优先级** | P0 (高危) / P1 / P2 |
 | **预计审计时间** | 45-60 分钟 |
 

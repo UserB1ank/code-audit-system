@@ -370,6 +370,7 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
 - 记录安全控制及绕过方法
 - 过滤理论问题
 
+
 #### 阶段 2.4：CVE 就绪漏洞报告
 
 每个子 Agent 必须生成 **CVE 就绪报告**：
@@ -413,11 +414,13 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
    - 使用 `docker-sandbox` skill 进行隔离测试环境
 
 4. **启动环境**:
+
    ```bash
    docker-compose up -d
    ```
 
 **Store**: Docker 配置到 `workspace/docker/`
+
 
 ### 步骤 4：武器化 POC 编写
 
@@ -479,6 +482,7 @@ CVSS: [评分] [向量]
    - 成功/失败
    - 输出/证据
    - 利用时间
+
 
 4. **创建验证报告**: `reports/verification-report.md`
 
@@ -786,3 +790,4 @@ code-audit-projects/<project-name>/
 3. 主 Agent 必须预先创建背景文档
 4. 每个子 Agent 必须有独立工作区
 5. 仅报告 CVE 级别漏洞（CVSS ≥ 7.0）
+

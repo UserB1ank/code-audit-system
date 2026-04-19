@@ -74,7 +74,7 @@ code-audit-projects/<project>/state/
       "label": "ecms-cve-hunter-services",
       "session_key": "agent:cybersecurity_expert:subagent:xxx",
       "module": "core/services/",
-      "source_path": "/home/pc01/.openclaw/workspace-cybersecurity_expert/code-audit-projects/ecms/source/core/services/",
+      "source_path": "<project-root>/source/core/services/",
       "priority": "P0",
       "status": "running",
       "started_at": "2026-04-02T13:06:00+08:00",
