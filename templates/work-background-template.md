@@ -1,137 +1,137 @@
-# Work Background - [Project Name]
+# 工作背景 - [项目名称]
 
-## Project Overview
+## 项目概览
 
-**Repository:** [Git URL]
-**Analysis Date:** [Date]
-**Analyzed By:** MainAgent
-
----
-
-## Technology Stack
-
-### Programming Languages
-
-| Language | Version | Files |
-|----------|---------|-------|
-| [e.g., Python] | [e.g., 3.9] | [count] |
-| [e.g., JavaScript] | [e.g., ES2020] | [count] |
-
-### Frameworks and Libraries
-
-| Framework/Library | Version | Purpose |
-|-------------------|---------|---------|
-| [e.g., Django] | [e.g., 4.2] | Web framework |
-| [e.g., React] | [e.g., 18.2] | Frontend UI |
-
-### Database
-
-| Database | Version | Usage |
-|----------|---------|-------|
-| [e.g., PostgreSQL] | [e.g., 15] | Primary data store |
-| [e.g., Redis] | [e.g., 7] | Cache/session |
-
-### External Services
-
-| Service | Purpose |
-|---------|---------|
-| [e.g., AWS S3] | File storage |
-| [e.g., Stripe] | Payment processing |
+**仓库地址:** [Git URL]
+**分析日期:** [日期]
+**分析者:** MainAgent
 
 ---
 
-## Application Type
+## 技术栈
 
-**Primary Classification:** [Web Application / System Service / GUI App / Mobile App / Other]
+### 编程语言
 
-**Architecture:** [Monolith / Microservices / Serverless / Hybrid]
+| 语言 | 版本 | 文件数 |
+|------|------|--------|
+| [如: Python] | [如: 3.9] | [数量] |
+| [如: JavaScript] | [如: ES2020] | [数量] |
 
-**Deployment:** [Docker / VM / Bare Metal / Cloud Native]
+### 框架和库
 
----
+| 框架/库 | 版本 | 用途 |
+|---------|------|------|
+| [如: Django] | [如: 4.2] | Web 框架 |
+| [如: React] | [如: 18.2] | 前端 UI |
 
-## Key Components
+### 数据库
 
-### Entry Points
+| 数据库 | 版本 | 用途 |
+|--------|------|------|
+| [如: PostgreSQL] | [如: 15] | 主数据存储 |
+| [如: Redis] | [如: 7] | 缓存/会话 |
 
-| Component | Location | Description |
-|-----------|----------|-------------|
-| HTTP Server | `server.py:main()` | Main web server |
-| API Routes | `api/routes.py` | REST API endpoints |
-| CLI Commands | `cmd/main.go` | Command-line interface |
+### 外部服务
 
-### Attack Surface Areas
-
-1. **HTTP endpoints** - [count] routes accepting user input
-2. **File uploads** - [locations]
-3. **Authentication** - [login/register/password reset endpoints]
-4. **Database** - [query patterns]
-5. **External integrations** - [APIs called]
-
----
-
-## Security-Relevant Patterns
-
-### Authentication Method
-[JWT / Session-based / OAuth / API Keys / None]
-
-### Authorization Pattern
-[RBAC / ABAC / ACL / None detected]
-
-### Input Handling
-[Sanitization library used / Manual sanitization / None detected]
-
-### Cryptography
-[Libraries and algorithms in use]
+| 服务 | 用途 |
+|------|------|
+| [如: AWS S3] | 文件存储 |
+| [如: Stripe] | 支付处理 |
 
 ---
 
-## Module Partition Summary
+## 应用类型
 
-| Module | Files | Responsibility | Assigned To |
-|--------|-------|----------------|-------------|
-| [Module 1] | [count] | [Description] | SubAgent-1 |
-| [Module 2] | [count] | [Description] | SubAgent-2 |
-| [Module 3] | [count] | [Description] | SubAgent-3 |
+**主要分类:** [Web 应用 / 系统服务 / GUI 应用 / 移动应用 / 其他]
 
----
+**架构:** [单体 / 微服务 / 无服务器 / 混合]
 
-## Notes for SubAgents
-
-### Module-Specific Concerns
-
-**For API Module:**
-- Watch for: SQL injection, auth bypass, IDOR
-- Key files: `api/*.py`, `handlers/*.go`
-
-**For Frontend Module:**
-- Watch for: XSS, CSRF, client-side logic flaws
-- Key files: `src/**/*.jsx`, `components/**/*.vue`
-
-**For Auth Module:**
-- Watch for: Weak password hashing, session fixation
-- Key files: `auth/*.py`, `middleware/auth.*`
+**部署方式:** [Docker / 虚拟机 / 物理机 / 云原生]
 
 ---
 
-## Files for Detailed Analysis
+## 关键组件
 
-### High Priority (Direct External Input)
-1. `[file_path]` - Handles [input type]
-2. `[file_path]` - Manages [sensitive operation]
+### 入口点
 
-### Medium Priority (Internal Processing)
-1. `[file_path]` - Processes [data type]
-2. `[file_path]` - Implements [business logic]
+| 组件 | 位置 | 描述 |
+|------|------|------|
+| HTTP 服务器 | `server.py:main()` | 主 Web 服务器 |
+| API 路由 | `api/routes.py` | REST API 端点 |
+| CLI 命令 | `cmd/main.go` | 命令行接口 |
 
-### Low Priority (Utility/Support)
-1. `[file_path]` - Provides [utility function]
+### 攻击面区域
+
+1. **HTTP 端点** - [数量] 个接受用户输入的路由
+2. **文件上传** - [位置]
+3. **认证** - [登录/注册/密码重置端点]
+4. **数据库** - [查询模式]
+5. **外部集成** - [调用的 API]
 
 ---
 
-## Next Steps
+## 安全相关模式
 
-1. Each SubAgent should read their module-specific `module-info.md`
-2. Follow the vulnerability checklist in your assigned `skill.md`
-3. Report findings to `workspace/agent-<module>/report.md`
-4. Notify MainAgent of Critical findings immediately
+### 认证方式
+[JWT / 基于会话 / OAuth / API 密钥 / 无]
+
+### 授权模式
+[RBAC / ABAC / ACL / 未检测到]
+
+### 输入处理
+[使用了清理库 / 手动清理 / 未检测到]
+
+### 加密
+[使用的库和算法]
+
+---
+
+## 模块划分总结
+
+| 模块 | 文件数 | 职责 | 分配给 |
+|------|--------|------|--------|
+| [模块 1] | [数量] | [描述] | SubAgent-1 |
+| [模块 2] | [数量] | [描述] | SubAgent-2 |
+| [模块 3] | [数量] | [描述] | SubAgent-3 |
+
+---
+
+## 给子 Agent 的备注
+
+### 模块专项关注
+
+**API 模块:**
+- 关注: SQL 注入、认证绕过、IDOR
+- 关键文件: `api/*.py`, `handlers/*.go`
+
+**前端模块:**
+- 关注: XSS、CSRF、客户端逻辑缺陷
+- 关键文件: `src/**/*.jsx`, `components/**/*.vue`
+
+**认证模块:**
+- 关注: 弱密码哈希、会话固定
+- 关键文件: `auth/*.py`, `middleware/auth.*`
+
+---
+
+## 需详细分析的文件
+
+### 高优先级 (直接外部输入)
+1. `[file_path]` - 处理 [输入类型]
+2. `[file_path]` - 管理 [敏感操作]
+
+### 中优先级 (内部处理)
+1. `[file_path]` - 处理 [数据类型]
+2. `[file_path]` - 实现 [业务逻辑]
+
+### 低优先级 (工具/支撑)
+1. `[file_path]` - 提供 [工具函数]
+
+---
+
+## 下一步
+
+1. 每个子 Agent 应阅读其模块特定的 `module-info.md`
+2. 遵循分配的 `skill.md` 中的漏洞检查清单
+3. 将发现报告到 `workspace/agent-<module>/report.md`
+4. 发现严重漏洞时立即通知 MainAgent

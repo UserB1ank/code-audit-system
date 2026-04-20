@@ -1,201 +1,201 @@
-# Code Audit Summary Report
+# 代码审计总结报告
 
-## Project Overview
+## 项目概览
 
-| Field | Value |
-|-------|-------|
-| **Repository** | [Git URL] |
-| **Audit Date** | [Date] |
-| **Audit Duration** | [Time taken] |
-| **Commit Hash** | [commit] |
-| **Languages** | [List] |
-| **Frameworks** | [List] |
-| **Application Type** | [Type] |
-
----
-
-## Executive Summary
-
-| Metric | Count |
-|--------|-------|
-| **Total Vulnerabilities** | **X** |
-| Critical | X |
-| High | X |
-| Medium | X |
-| Low | X |
-
-| Modules Analyzed | Files Reviewed |
-|------------------|----------------|
-| [count] | [count] |
-
-### Overall Risk Assessment
-
-**Risk Level:** [Critical / High / Medium / Low]
-
-[Brief assessment of the overall security posture - 2-3 paragraphs]
+| 字段 | 值 |
+|------|-----|
+| **仓库地址** | [Git URL] |
+| **审计日期** | [日期] |
+| **审计时长** | [耗时] |
+| **提交哈希** | [commit] |
+| **编程语言** | [列表] |
+| **框架** | [列表] |
+| **应用类型** | [类型] |
 
 ---
 
-## Vulnerability Breakdown
+## 执行摘要
 
-### By Type
+| 指标 | 数量 |
+|------|------|
+| **漏洞总数** | **X** |
+| 严重 | X |
+| 高危 | X |
+| 中危 | X |
+| 低危 | X |
 
-| Vulnerability Type | Count | Verified | With POC |
-|-------------------|-------|----------|----------|
-| SQL Injection | X | X/X | X |
-| Remote Code Execution | X | X/X | X |
-| Cross-Site Scripting (XSS) | X | X/X | X |
+| 分析模块数 | 审查文件数 |
+|-----------|-----------|
+| [数量] | [数量] |
+
+### 总体风险评估
+
+**风险等级:** [严重 / 高危 / 中危 / 低危]
+
+[对整体安全态势的简要评估 - 2-3 段]
+
+---
+
+## 漏洞分类
+
+### 按类型统计
+
+| 漏洞类型 | 数量 | 已验证 | 有 POC |
+|----------|------|--------|--------|
+| SQL 注入 | X | X/X | X |
+| 远程代码执行 (RCE) | X | X/X | X |
+| 跨站脚本 (XSS) | X | X/X | X |
 | CSRF | X | X/X | X |
 | SSRF | X | X/X | X |
-| Path Traversal | X | X/X | X |
-| Authentication Bypass | X | X/X | X |
-| Authorization Issues | X | X/X | X |
-| Information Disclosure | X | X/X | X |
-| Other | X | X/X | X |
+| 路径穿越 | X | X/X | X |
+| 认证绕过 | X | X/X | X |
+| 授权问题 | X | X/X | X |
+| 信息泄露 | X | X/X | X |
+| 其他 | X | X/X | X |
 
-### By Severity
+### 按严重程度
 
-#### Critical Severity
+#### 严重级别
 
-| ID | Type | Location | Status |
-|----|------|----------|--------|
-| VULN-001 | SQL Injection | `auth/login.py:23-35` | Verified |
-| VULN-002 | RCE | `api/upload.py:45-60` | Pending |
+| 编号 | 类型 | 位置 | 状态 |
+|------|------|------|------|
+| VULN-001 | SQL 注入 | `auth/login.py:23-35` | 已验证 |
+| VULN-002 | RCE | `api/upload.py:45-60` | 待验证 |
 
-#### High Severity
+#### 高危级别
 
-| ID | Type | Location | Status |
-|----|------|----------|--------|
-| VULN-003 | XSS | `frontend/search.jsx:12-18` | Verified |
-| VULN-004 | Auth Bypass | `auth/reset.py:30-40` | Failed |
+| 编号 | 类型 | 位置 | 状态 |
+|------|------|------|------|
+| VULN-003 | XSS | `frontend/search.jsx:12-18` | 已验证 |
+| VULN-004 | 认证绕过 | `auth/reset.py:30-40` | 失败 |
 
-#### Medium Severity
+#### 中危级别
 
-| ID | Type | Location | Status |
-|----|------|----------|--------|
-| VULN-005 | CSRF | `api/settings.py:15-25` | N/A |
+| 编号 | 类型 | 位置 | 状态 |
+|------|------|------|------|
+| VULN-005 | CSRF | `api/settings.py:15-25` | 不适用 |
 
-#### Low Severity
+#### 低危级别
 
-| ID | Type | Location | Status |
-|----|------|----------|--------|
-| VULN-006 | Info Disclosure | `debug/trace.log` | N/A |
+| 编号 | 类型 | 位置 | 状态 |
+|------|------|------|------|
+| VULN-006 | 信息泄露 | `debug/trace.log` | 不适用 |
 
 ---
 
-## Critical Findings Detail
+## 关键发现详情
 
-### VULN-001: SQL Injection in Authentication
+### VULN-001: 认证模块 SQL 注入
 
-**Severity:** Critical
-**Location:** `auth/login.py:23-35`
-**Status:** Verified ✓
+**严重程度:** 严重
+**位置:** `auth/login.py:23-35`
+**状态:** 已验证 ✓
 
-**Summary:**
-[2-3 sentence description]
+**概述:**
+[2-3 句描述]
 
-**Impact:**
-[What attackers can achieve]
+**影响:**
+[攻击者可达成的目标]
 
-**Evidence:**
-[Brief evidence summary]
+**证据:**
+[简要证据摘要]
 
 **POC:**
 ```bash
 python pocs/poc-001-sql-injection-login.py -t http://target.com
 ```
 
-**Remediation:**
-[High-level fix recommendation]
+**修复建议:**
+[高层次修复建议]
 
 ---
 
-### VULN-002: Remote Code Execution via File Upload
+### VULN-002: 文件上传导致远程代码执行
 
-**Severity:** Critical
-**Location:** `api/upload.py:45-60`
-**Status:** Pending verification
+**严重程度:** 严重
+**位置:** `api/upload.py:45-60`
+**状态:** 待验证
 
-**Summary:**
-[2-3 sentence description]
+**概述:**
+[2-3 句描述]
 
-**Impact:**
-[What attackers can achieve]
-
----
-
-## Module Summary
-
-| Module | Vulnerabilities Found | Critical | High | Medium | Low |
-|--------|----------------------|----------|------|--------|-----|
-| Authentication | X | X | X | X | X |
-| API Layer | X | X | X | X | X |
-| Frontend | X | X | X | X | X |
-| Data Layer | X | X | X | X | X |
+**影响:**
+[攻击者可达成的目标]
 
 ---
 
-## Verification Summary
+## 模块总结
 
-| POC ID | Vulnerability | Status | Notes |
-|--------|---------------|--------|-------|
-| poc-001 | SQL Injection | ✓ Success | Auth bypass achieved |
-| poc-002 | RCE | ✗ Failed | WAF blocked payload |
-| poc-003 | XSS | ✓ Success | Alert triggered |
-
-**Verification Environment:**
-- Docker: Yes/No
-- Target: [URL/Description]
-- Date: [Date]
+| 模块 | 发现漏洞 | 严重 | 高危 | 中危 | 低危 |
+|------|----------|------|------|------|------|
+| 认证模块 | X | X | X | X | X |
+| API 层 | X | X | X | X | X |
+| 前端 | X | X | X | X | X |
+| 数据层 | X | X | X | X | X |
 
 ---
 
-## Recommendations
+## 验证总结
 
-### Immediate Actions (Critical)
+| POC 编号 | 漏洞 | 状态 | 备注 |
+|----------|------|------|------|
+| poc-001 | SQL 注入 | ✓ 成功 | 认证绕过已达成 |
+| poc-002 | RCE | ✗ 失败 | WAF 拦截了载荷 |
+| poc-003 | XSS | ✓ 成功 | Alert 触发成功 |
 
-1. **Fix SQL Injection in login.py**
-   - Priority: P0
-   - Effort: Low
-   - Impact: Prevents authentication bypass
-
-2. **Patch RCE in upload handler**
-   - Priority: P0
-   - Effort: Medium
-   - Impact: Prevents server compromise
-
-### Short-term Actions (High)
-
-1. **Implement input validation framework**
-2. **Add CSRF tokens to state-changing endpoints**
-3. **Review and fix authorization checks**
-
-### Medium-term Actions (Medium/Low)
-
-1. **Implement security headers**
-2. **Add rate limiting**
-3. **Improve error handling**
+**验证环境:**
+- Docker: 是/否
+- 目标: [URL/描述]
+- 日期: [日期]
 
 ---
 
-## Call Graph Analysis (Neo4j)
+## 修复建议
 
-If implemented, call graphs are stored in Neo4j with the following structure:
+### 紧急行动 (严重级别)
+
+1. **修复 login.py 中的 SQL 注入**
+   - 优先级: P0
+   - 工作量: 低
+   - 影响: 阻止认证绕过
+
+2. **修补上传处理程序中的 RCE**
+   - 优先级: P0
+   - 工作量: 中
+   - 影响: 阻止服务器被控制
+
+### 短期行动 (高危级别)
+
+1. **实施输入验证框架**
+2. **为状态变更端点添加 CSRF 令牌**
+3. **审查并修复授权检查**
+
+### 中期行动 (中危/低危级别)
+
+1. **实施安全响应头**
+2. **添加速率限制**
+3. **改进错误处理**
+
+---
+
+## 调用图分析 (Neo4j)
+
+如已实现，调用图存储在 Neo4j 中，结构如下:
 
 ```
-:Function nodes with properties:
-- name: function name
-- file: source file path
-- line: line number
-- inputs: parameter list
-- outputs: return types
+:Function 节点属性:
+- name: 函数名
+- file: 源文件路径
+- line: 行号
+- inputs: 参数列表
+- outputs: 返回类型
 
-:CALLS relationships:
-- From caller to callee
-- Represents data flow
+:CALLS 关系:
+- 从调用者到被调用者
+- 表示数据流
 ```
 
-Query example:
+查询示例:
 ```cypher
 MATCH path = (source:Function)-[:CALLS*]->(sink:Function)
 WHERE sink.name CONTAINS 'execute' OR sink.name CONTAINS 'eval'
@@ -204,59 +204,59 @@ RETURN path
 
 ---
 
-## Appendix
+## 附录
 
-### Files Generated
+### 生成的文件
 
-**Reports:**
+**报告:**
 - `reports/vulnerability-001-*.md`
 - `reports/vulnerability-002-*.md`
 - `reports/verification-report.md`
-- `reports/summary-report.md` (this file)
+- `reports/summary-report.md` (本文件)
 
-**POC Scripts:**
+**POC 脚本:**
 - `pocs/poc-001-*.py`
 - `pocs/poc-002-*.py`
 
-**Workspaces:**
+**工作区:**
 - `workspace/00-work-background.md`
 - `workspace/01-module-map.md`
 - `workspace/agent-*/report.md`
 
-### Audit Team
+### 审计团队
 
-| Role | Agent |
-|------|-------|
-| Main Agent | coordinator |
-| SubAgent (Auth) | agent-auth |
-| SubAgent (API) | agent-api |
-| SubAgent (Frontend) | agent-frontend |
+| 角色 | 代理 |
+|------|------|
+| 主代理 | coordinator |
+| 子代理 (认证) | agent-auth |
+| 子代理 (API) | agent-api |
+| 子代理 (前端) | agent-frontend |
 
-### Audit Timeline
+### 审计时间线
 
-| Phase | Start | End | Duration |
-|-------|-------|-----|----------|
-| Technology Discovery | HH:MM | HH:MM | Xm |
-| Module Partitioning | HH:MM | HH:MM | Xm |
-| SubAgent Analysis | HH:MM | HH:MM | Xm |
-| POC Development | HH:MM | HH:MM | Xm |
-| Verification | HH:MM | HH:MM | Xm |
-| Report Generation | HH:MM | HH:MM | Xm |
+| 阶段 | 开始 | 结束 | 耗时 |
+|------|------|------|------|
+| 技术侦察 | HH:MM | HH:MM | Xm |
+| 模块划分 | HH:MM | HH:MM | Xm |
+| 子代理分析 | HH:MM | HH:MM | Xm |
+| POC 开发 | HH:MM | HH:MM | Xm |
+| 验证测试 | HH:MM | HH:MM | Xm |
+| 报告生成 | HH:MM | HH:MM | Xm |
 
 ---
 
-## Disclaimer
+## 免责声明
 
-This audit was performed using automated and manual analysis techniques. While significant effort was made to identify vulnerabilities, this report does not guarantee the absence of additional security issues.
+本次审计使用自动化和手动分析技术进行。虽然我们尽力发现漏洞，但本报告不保证不存在其他安全问题。
 
-**Limitations:**
-- Analysis based on code snapshot at [commit hash]
-- Runtime behavior may differ from static analysis
-- Some vulnerabilities require specific configurations to manifest
-- External dependencies not fully audited
+**局限性:**
+- 分析基于 [提交哈希] 时的代码快照
+- 运行时行为可能与静态分析不同
+- 某些漏洞需要特定配置才能触发
+- 外部依赖未完全审计
 
-**Recommended Follow-up:**
-- Regular security audits (quarterly recommended)
-- Penetration testing by human experts
-- Continuous security monitoring
-- Bug bounty program for ongoing discovery
+**建议后续行动:**
+- 定期安全审计 (建议每季度)
+- 由人类专家进行渗透测试
+- 持续安全监控
+- 建立漏洞赏金计划以持续发现

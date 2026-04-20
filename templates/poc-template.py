@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-POC-[XXX]: [Vulnerability Type] in [Target File/Function]
+POC-[XXX]: [漏洞类型] - [目标文件/函数]
 
-Target: [Target application URL or description]
-Vulnerability: [Brief description]
-Severity: [Critical/High/Medium/Low]
-Author: [SubAgent name]
-Date: [Date]
+目标: [目标应用 URL 或描述]
+漏洞类型: [简要描述]
+严重程度: 严重/高危/中危/低危
+发现者: [子Agent名称]
+日期: [日期]
 
-Usage:
-    python poc-xxx.py -t <target_url>
+用法:
+    python poc-xxx.py -t <目标URL>
 
-Example:
+示例:
     python poc-xxx.py -t http://localhost:8000
 """
 
@@ -20,22 +20,22 @@ import sys
 try:
     import requests
 except ImportError:
-    print("[-] requests library not found. Install with: pip install requests")
+    print("[-] 未找到 requests 库。请使用以下命令安装: pip install requests")
     sys.exit(1)
 
 
 # =============================================================================
-# Configuration
+# 配置
 # =============================================================================
 
-DEFAULT_TIMEOUT = 10  # seconds
+DEFAULT_TIMEOUT = 10  # 超时时间（秒）
 
 
 # =============================================================================
-# Vulnerability-Specific Payloads
+# 漏洞专用载荷
 # =============================================================================
 
-# Modify these based on the vulnerability type
+# 根据漏洞类型修改以下载荷
 
 SQL_INJECTION_PAYLOADS = [
     "' OR '1'='1' --",
@@ -64,24 +64,24 @@ PATH_TRAVERSAL_PAYLOADS = [
 
 
 # =============================================================================
-# POC Logic
+# POC 逻辑
 # =============================================================================
 
 def check_vulnerability(target_url: str) -> bool:
     """
-    Check if the target is vulnerable.
+    检查目标是否存在漏洞。
 
-    Args:
-        target_url: The base URL of the target application
+    参数:
+        target_url: 目标应用的基础 URL
 
-    Returns:
-        True if vulnerable, False otherwise
+    返回:
+        True 表示存在漏洞，False 表示不存在
     """
-    # TODO: Implement vulnerability check logic
-    # This is where you put the actual exploit code
+    # TODO: 实现漏洞检测逻辑
+    # 在此编写实际的利用代码
 
     vulnerable_endpoint = "/vulnerable-endpoint"
-    test_payload = "' OR '1'='1' --"  # Example for SQL injection
+    test_payload = "' OR '1'='1' --"  # SQL 注入示例
 
     try:
         url = f"{target_url}{vulnerable_endpoint}"
@@ -89,35 +89,35 @@ def check_vulnerability(target_url: str) -> bool:
 
         response = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
 
-        # Check for signs of successful exploitation
+        # 检查成功利用的迹象
         if is_vulnerable(response):
-            print(f"[+] Vulnerability confirmed at {url}")
+            print(f"[+] 在 {url} 确认漏洞存在")
             return True
         else:
-            print(f"[-] Target appears to be patched")
+            print(f"[-] 目标似乎已修补")
             return False
 
     except requests.exceptions.RequestException as e:
-        print(f"[-] Error connecting to target: {e}")
+        print(f"[-] 连接目标时出错: {e}")
         return False
 
 
 def is_vulnerable(response: requests.Response) -> bool:
     """
-    Analyze response to determine if exploit was successful.
+    分析响应以判断利用是否成功。
 
-    Args:
-        response: HTTP response object
+    参数:
+        response: HTTP 响应对象
 
-    Returns:
-        True if response indicates vulnerability, False otherwise
+    返回:
+        True 表示响应表明存在漏洞，False 表示不存在
     """
-    # TODO: Customize based on vulnerability
-    # Look for indicators like:
-    # - Error messages
-    # - Unexpected data
-    # - Successful authentication bypass
-    # - Command output
+    # TODO: 根据漏洞类型自定义
+    # 寻找以下指标:
+    # - 错误消息
+    # - 异常数据
+    # - 成功的认证绕过
+    # - 命令输出
 
     indicators = [
         "SQL syntax",
@@ -137,66 +137,66 @@ def is_vulnerable(response: requests.Response) -> bool:
 
 def exploit(target_url: str):
     """
-    Full exploit - demonstrates the vulnerability impact.
+    完整利用 - 演示漏洞影响。
 
-    Args:
-        target_url: The base URL of the target application
+    参数:
+        target_url: 目标应用的基础 URL
     """
-    print("[*] Running full exploit demonstration...")
+    print("[*] 运行完整利用演示...")
 
-    # TODO: Implement full exploit logic
-    # This should demonstrate the real-world impact
-    # e.g., for SQL injection: extract data from database
-    # e.g., for RCE: execute a command and show output
+    # TODO: 实现完整利用逻辑
+    # 此处应演示真实世界影响
+    # 例如，对于 SQL 注入: 从数据库提取数据
+    # 例如，对于 RCE: 执行命令并显示输出
 
     pass
 
 
 # =============================================================================
-# Main Entry Point
+# 主入口
 # =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"POC for [Vulnerability Type] - [Brief Description]"
+        description=f"POC - [漏洞类型] - [简要描述]"
     )
     parser.add_argument(
         "-t", "--target",
         required=True,
-        help="Target URL (e.g., http://localhost:8000)"
+        help="目标 URL (例如: http://localhost:8000)"
     )
     parser.add_argument(
         "-v", "--verbose",
         action="store_true",
-        help="Enable verbose output"
+        help="启用详细输出"
     )
     parser.add_argument(
         "--exploit",
         action="store_true",
-        help="Run full exploit instead of just checking"
+        help="运行完整利用而非仅检测"
     )
 
     args = parser.parse_args()
 
-    # Validate target URL
+    # 验证目标 URL
     if not args.target.startswith(("http://", "https://")):
-        print("[-] Target URL must start with http:// or https://")
+        print("[-] 目标 URL 必须以 http:// 或 https:// 开头")
         sys.exit(1)
 
-    print(f"[*] Target: {args.target}")
-    print(f"[*] Vulnerability: [Vulnerability Type]")
-    print(f"[*] Starting POC...")
+    print(f"[*] 目标: {args.target}")
+    print(f"[*] 漏洞类型: [漏洞类型]")
+    print(f"[*] 开始 POC 执行...")
 
-    # Check vulnerability
+    # 检查漏洞
     is_vuln = check_vulnerability(args.target)
 
     if is_vuln:
-        print("[+] Target is VULNERABLE")
+        print("[+] 目标存在漏洞")
 
         if args.exploit:
             exploit(args.target)
     else:
-        print("[-] Target is NOT vulnerable (or detection failed)")
+        print("[-] 目标不存在此漏洞 (或检测失败)")
         sys.exit(0)
 
 

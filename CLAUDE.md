@@ -58,4 +58,4 @@ Subagent status: `pending → running → completed` (or `failed`/`timeout`)
 
 ## Language
 
-The skill definition, templates, and references are primarily written in **Chinese** with English technical terms. Subagent outputs (reports, POCs) use English for CVE submission compatibility.
+The skill definition, templates, and references are written in **Chinese** with English technical terms. All reports, summaries, and user-facing output are in **Chinese**. Only the following may remain in English: vulnerability type names (RCE, SQLi, etc.), CWE/CVE identifiers, CVSS vector strings, code snippets, and variable/function names in POC scripts.

@@ -1,62 +1,62 @@
-# Module Information - [Module Name]
+# 模块信息 - [模块名称]
 
-## Module Overview
+## 模块概览
 
-**Module Name:** [name]
-**Assigned Agent:** SubAgent-[name]
-**Workspace:** `workspace/agent-[name]/`
-
----
-
-## Responsibilities
-
-[Describe what this module is responsible for in the application]
-
-Example:
-- Handle user authentication and authorization
-- Process HTTP API requests
-- Manage database connections
-- Render user interface components
+**模块名称:** [名称]
+**分配代理:** SubAgent-[名称]
+**工作区:** `workspace/agent-[名称]/`
 
 ---
 
-## Files in This Module
+## 职责
 
-| File | Lines | Purpose | Priority |
-|------|-------|---------|----------|
-| `path/to/file1.py` | 150 | Login handler | High |
-| `path/to/file2.py` | 89 | Session management | High |
-| `path/to/file3.py` | 45 | Utility functions | Medium |
+[描述此模块在应用程序中负责的功能]
 
----
-
-## Entry Points
-
-Functions/methods that accept external input:
-
-| Function | Location | Input Type |
-|----------|----------|------------|
-| `login_handler()` | `file1.py:15` | HTTP POST body |
-| `search()` | `file2.py:30` | Query parameter |
-| `upload_file()` | `file3.py:10` | File upload |
+示例:
+- 处理用户认证和授权
+- 处理 HTTP API 请求
+- 管理数据库连接
+- 渲染用户界面组件
 
 ---
 
-## Data Flow
+## 模块内文件
+
+| 文件 | 行数 | 用途 | 优先级 |
+|------|------|------|--------|
+| `path/to/file1.py` | 150 | 登录处理器 | 高 |
+| `path/to/file2.py` | 89 | 会话管理 | 高 |
+| `path/to/file3.py` | 45 | 工具函数 | 中 |
+
+---
+
+## 入口点
+
+接受外部输入的函数/方法:
+
+| 函数 | 位置 | 输入类型 |
+|------|------|----------|
+| `login_handler()` | `file1.py:15` | HTTP POST 正文 |
+| `search()` | `file2.py:30` | 查询参数 |
+| `upload_file()` | `file3.py:10` | 文件上传 |
+
+---
+
+## 数据流
 
 ```
-[Input Source]
+[输入源]
     ↓
-[Entry Point Function]
+[入口函数]
     ↓
-[Processing Functions]
+[处理函数]
     ↓
-[Sink Function]
+[Sink 函数]
 ```
 
-### Specific Data Flows for This Module
+### 本模块的特定数据流
 
-1. **Authentication Flow:**
+1. **认证流程:**
    ```
    POST /login
        ↓
@@ -66,81 +66,81 @@ Functions/methods that accept external input:
        ↓
    create_session(user_id)
        ↓
-   Set-Cookie header
+   Set-Cookie 响应头
    ```
 
-2. **[Flow Name]:**
+2. **[流程名称]:**
    ```
-   [Describe flow]
+   [描述流程]
    ```
 
 ---
 
-## Security Sinks
+## 安全 Sink
 
-Functions that perform sensitive operations:
+执行敏感操作的函数:
 
-| Sink | Location | Operation |
-|------|----------|-----------|
-| `db.execute()` | `db.py:45` | SQL queries |
-| `os.system()` | `utils.py:20` | System commands |
-| `render_template()` | `views.py:30` | HTML output |
-
----
-
-## Known Security Controls
-
-| Control | Implementation | Location |
-|---------|----------------|----------|
-| Input sanitization | `sanitize_input()` | `utils.py:5-15` |
-| Authentication check | `@require_auth` decorator | `auth.py:10` |
-| CSRF token | `csrf_protect()` middleware | `middleware.py:25` |
+| Sink | 位置 | 操作 |
+|------|------|------|
+| `db.execute()` | `db.py:45` | SQL 查询 |
+| `os.system()` | `utils.py:20` | 系统命令 |
+| `render_template()` | `views.py:30` | HTML 输出 |
 
 ---
 
-## Vulnerability Focus Areas
+## 已知安全控制
 
-Based on module analysis, focus audit efforts on:
-
-1. **[Vulnerability Type 1]**
-   - Why: [reason]
-   - Files: [file list]
-
-2. **[Vulnerability Type 2]**
-   - Why: [reason]
-   - Files: [file list]
+| 控制措施 | 实现方式 | 位置 |
+|----------|----------|------|
+| 输入清理 | `sanitize_input()` | `utils.py:5-15` |
+| 认证检查 | `@require_auth` 装饰器 | `auth.py:10` |
+| CSRF 令牌 | `csrf_protect()` 中间件 | `middleware.py:25` |
 
 ---
 
-## Inter-Module Dependencies
+## 漏洞关注区域
 
-| Dependent Module | Relationship | Data Shared |
-|------------------|--------------|-------------|
-| [Module A] | Calls this module | User credentials |
-| [Module B] | Called by this module | Query results |
+基于模块分析，重点审计:
 
----
+1. **[漏洞类型 1]**
+   - 原因: [理由]
+   - 文件: [文件列表]
 
-## Test Coverage
-
-| File | Tests Exist | Coverage |
-|------|-------------|----------|
-| `file1.py` | Yes/No | N/A |
-| `file2.py` | Yes/No | N/A |
+2. **[漏洞类型 2]**
+   - 原因: [理由]
+   - 文件: [文件列表]
 
 ---
 
-## Notes for Auditor
+## 跨模块依赖
 
-- [Special consideration 1]
-- [Special consideration 2]
-- [Areas requiring extra scrutiny]
+| 依赖模块 | 关系 | 共享数据 |
+|----------|------|----------|
+| [模块 A] | 调用本模块 | 用户凭据 |
+| [模块 B] | 被本模块调用 | 查询结果 |
 
 ---
 
-## Deliverables
+## 测试覆盖
 
-1. Complete static analysis of all files listed above
-2. Document all vulnerabilities found using `templates/vulnerability-report-template.md`
-3. Save reports to `workspace/agent-[name]/`
-4. Notify MainAgent of Critical findings immediately
+| 文件 | 存在测试 | 覆盖率 |
+|------|----------|--------|
+| `file1.py` | 是/否 | 不适用 |
+| `file2.py` | 是/否 | 不适用 |
+
+---
+
+## 给审计者的备注
+
+- [特殊注意事项 1]
+- [特殊注意事项 2]
+- [需要额外审查的区域]
+
+---
+
+## 交付物
+
+1. 完成所有列出文件的静态分析
+2. 使用 `templates/vulnerability-report-template.md` 记录发现的所有漏洞
+3. 将报告保存到 `workspace/agent-[名称]/`
+4. 发现严重漏洞时立即通知 MainAgent
