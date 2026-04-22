@@ -364,11 +364,14 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
 **子代理指令必须包含**:
 - **目标源代码路径** (绝对路径): `<project-root>/source/<module>/`
 - **报告输出位置** (绝对路径): `<project-root>/workspace/agent-<module>/report.md`
-- **背景文档位置** (必须阅读): `<project-root>/workspace/agent-<module>/background.md`
+- **背景文档位置** (启动后必须阅读): `<project-root>/workspace/agent-<module>/background.md`
+- **专项技能位置** (启动后必须阅读): `<project-root>/workspace/agent-<module>/skill.md`
 - 仅关注可利用漏洞
 - 追踪完整调用链 (Source → Sink)
 - 记录安全控制措施和绕过方法
 - 过滤理论性问题
+
+**⚠️ 子代理启动强制流程**: 子代理被调度后，必须**首先使用 Read 工具读取 `background.md` 和 `skill.md`**，然后基于这些定制文档中的指导开展审计。这些文档包含了针对该模块的技术侦察结果、高价值目标、审计思路和绕过分析，是提升发现率的关键。
 
 #### Phase 2.4: CVE 就绪漏洞报告
 
