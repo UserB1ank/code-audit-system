@@ -519,24 +519,56 @@ CVSS: [评分] [向量]
 ### 步骤 5: 漏洞验证 (可选 - 询问用户)
 
 询问用户:
-> "是否要在部署的环境中验证 POC? 这将测试每个利用是否有效并生成验证报告。"
+> "是否要在部署的环境中验证 POC? 每验证一个漏洞将生成一份独立验证报告，最终汇总为 CVE 提交总报告。"
 
 如果用户确认:
 
 1. **部署目标** (未在步骤 3 中完成)
-2. **对部署的 Docker 环境运行每个 POC**
-3. **记录结果**:
-   - 成功/失败
-   - 输出/证据
-   - 利用耗时
+2. **逐个漏洞进行验证** — 对每个 CVE 级别漏洞:
 
-4. **创建验证报告**: `reports/verification-report.md`
+   a. **运行 POC** 于部署的 Docker/本地环境
+   b. **记录结果**:
+      - 成功/失败
+      - 输出/证据
+      - 利用耗时
 
-验证报告在漏洞报告基础上增加:
-- 验证状态: "成功" / "失败"
-- POC 路径: POC 脚本的完整路径
-- 执行输出: POC 运行的终端输出
-- 证据: 截图、响应数据等
+   c. **立即编写单漏洞验证报告** (小报告):
+      - 路径: `reports/vulnerability-<id>-verification.md`
+      - 格式: 参考 `templates/per-vulnerability-verification-report-template.md`
+      - 内容必须包含:
+        - 漏洞标题、一句话概述
+        - 严重性评估 (CVSS、CWE)
+        - 受影响组件 (核心组件 + 关联组件)
+        - 影响 (具体攻击后果)
+        - 技术复现步骤 (部署、确认、利用命令及输出)
+        - 漏洞根因 (带行号的代码片段 + 问题分析)
+        - 展示的影响 (信任边界穿越论证、范围检查)
+        - 环境 (版本、Commit、OS、权限等)
+        - 补救建议 (含修复代码示例)
+      - 若验证失败，报告中需包含失败分析和可能原因
+
+   d. **更新审计状态**:
+      ```json
+      {
+        "vulnerabilities": [
+          {
+            "id": "VULN-XXX",
+            "verification_report": "reports/vulnerability-XXX-verification.md",
+            "verification_status": "verified|failed|skipped",
+            "verification_date": "2026-04-22T10:00:00Z"
+          }
+        ]
+      }
+      ```
+
+3. **(可选) 生成验证汇总报告** `reports/verification-report.md`:
+   - 在所有单漏洞验证报告完成后，可选择生成汇总表
+   - 仅作为索引，详细内容指向各单漏洞验证报告
+
+**关键规则**:
+- **每验证一个漏洞必须立即写一份小报告**，禁止等全部验证完成后再统一写
+- 小报告是 CVE 提交总报告的核心素材，必须详实、可复现
+- 使用中文撰写，保留技术术语英文
 
 ### 步骤 6: CVE 提交报告
 
@@ -547,73 +579,116 @@ CVSS: [评分] [向量]
    - 武器化 POC 脚本
    - POC 验证结果 (如已验证)
 
-2. **Generate CVE Submission Report** at `reports/cve-submission-report.md`:
+2. **生成 CVE 提交总报告** `reports/cve-submission-report.md`:
+
+   总报告汇总所有已验证的单漏洞报告，格式如下：
 
 ```markdown
-# CVE 提交报告
+# CVE Submission Report — [产品名]
 
-## 项目概览
-- **产品**: [产品名称]
-- **仓库地址**: <git-url>
-- **厂商**: [厂商名称]
-- **审计日期**: <date>
-- **审计人员**: [你的名称/代号]
+## Project Overview
+- **Product**: [产品名称]
+- **Repository**: <git-url>
+- **Vendor**: [厂商名称]
+- **Audit Date**: <date>
+- **Commit**: <commit-hash>
+- **Auditor**: [你的名称/代号]
 
-## 执行摘要 (CVE 导向)
-- **CVE 级别漏洞**: <count> (CVSS ≥ 7.0)
-- **严重 (CVSS 9.0-10.0)**: <count>
-- **高危 (CVSS 7.0-8.9)**: <count>
-- **已武器化 POC 总数**: <count>
+## Executive Summary
+- **CVE-Worthy Vulnerabilities**: <count> (CVSS ≥ 7.0)
+- **Critical (CVSS 9.0-10.0)**: <count>
+- **High (CVSS 7.0-8.9)**: <count>
+- **Total with Complete Exploit Chains**: <count>
+- **POC-Ready**: <count>
 
-## CVE 候选列表
+## CVE Candidates
 
-| 编号 | 漏洞类型 | CVSS | 受影响版本 | POC | 状态 |
-|------|----------|------|-----------|-----|------|
-| CVE-XXXX-XXXXX | RCE | 9.8 | v1.0-v2.3 | ✅ | 准备提交 |
-| CVE-XXXX-XXXXX | 认证绕过 | 8.5 | v1.5-v2.3 | ✅ | 准备提交 |
+| ID | Type | CVSS | CWE | Location | POC | Status |
+|----|------|------|-----|----------|-----|--------|
+| CVE-XXXX-XXXXX | [漏洞类型] | [评分] | CWE-XXX | `file.py:行号` | Yes | Ready |
 
-## 详细 CVE 报告
+---
+
+## Detailed CVE Reports
 
 ### CVE-XXXX-XXXXX: [漏洞名称]
 
-**严重程度**: 严重 (CVSS 9.8)
-**向量**: AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
-**受影响版本**: v1.0 - v2.3
-**已修复版本**: [如已知]
+**Severity**: [严重级别] (CVSS [评分])
+**Vector**: [CVSS向量字符串]
+**CWE**: CWE-XXX ([CWE名称])
+**Affected Versions**: [版本范围]
 
-**技术细节**:
-- **位置**: `file.py:行号`
-- **根本原因**: [简要描述]
-- **攻击向量**: [攻击者如何利用]
-- **影响**: [攻击者可达成的目标]
+**Location**: `[文件路径:行号范围]`
 
-**调用链**:
+**Root Cause**: [根本缺陷的详细说明，具体指出缺少什么验证]
+
+**Call Chain**:
 ```
-用户输入() → 漏洞函数() → 危险操作()
+[1] Source: [函数]() 位于 [文件:行号]
+    ↓ [数据流描述]
+[2] Process: [函数]() 位于 [文件:行号]
+    ↓ [数据流描述]
+[3] Sink: [函数]() 位于 [文件:行号]
+    ↓ [最终结果]
 ```
 
-**POC**: `pocs/poc-001-rce.py`
+**Impact**: [攻击者可达成的具体目标，如系统完全控制、敏感信息泄露等]
 
-**验证结果**: ✅ 成功 (详见验证报告)
-
-**修复建议**: [厂商修复步骤]
-
-## 提交检查清单
-
-每个 CVE 需确认:
-- [ ] 技术报告完成
-- [ ] POC 已武器化并测试
-- [ ] CVSS v3.1 评分已计算
-- [ ] 受影响版本已确认
-- [ ] 厂商联系方式 (如协调披露)
-- [ ] 视频演示 (可选)
-
-## 附录
-- 完整报告: `reports/vulnerability-*.md`
-- 武器化 POC: `pocs/`
-- 验证报告: `reports/verification-report.md`
-- 调用图: `reports/call-graphs/` (如有)
+**POC**:
+```bash
+[可执行的 POC 命令或脚本路径]
 ```
+
+**Verification**: ✅ 成功 (详见 `reports/vulnerability-XXX-verification.md`)
+
+---
+
+### CVE-XXXX-XXXXX: [下一个漏洞]
+...
+
+## Maximum Impact Exploit Chain
+
+An attacker can chain multiple vulnerabilities for complete system compromise:
+
+```
+1. [步骤1]: [利用某个漏洞进行侦察/初始访问]
+2. [步骤2]: [利用某个漏洞提升权限/窃取凭证]
+3. [步骤3]: [利用某个漏洞实现 RCE/持久化]
+4. [步骤4]: [利用某个漏洞横向移动/数据窃取]
+```
+
+**Total time to full compromise**: <时间> with default configuration.
+
+## Submission Targets
+
+| CNA | URL | Priority |
+|-----|-----|----------|
+| MITRE | https://cveform.mitre.org/ | Primary |
+| GitHub Security Advisories | https://github.com/[vendor]/[repo]/security/advisories | High |
+| Vendor PSIRT | [vendor-specific] | Medium |
+
+## Submission Checklist
+
+For each CVE candidate:
+- [ ] Technical writeup complete (引用单漏洞验证报告)
+- [ ] POC weaponized and tested
+- [ ] CVSS v3.1 scoring calculated
+- [ ] Affected versions confirmed
+- [ ] Vendor notification (如协调披露)
+- [ ] Video demonstration (optional)
+
+## Appendix
+- Individual verification reports: `reports/vulnerability-*-verification.md`
+- Weaponized POCs: `pocs/`
+- Background: `workspace/00-work-background.md`
+- Module map: `workspace/01-module-map.md`
+```
+
+**总报告生成规则**:
+- 总报告中的每个漏洞详细描述必须引用对应的单漏洞验证报告 (`reports/vulnerability-<id>-verification.md`)
+- 总报告侧重于**汇总和提交就绪状态**，技术细节以单漏洞验证报告为准
+- 必须包含 **Maximum Impact Exploit Chain** 章节，展示漏洞组合利用的最大影响
+- 使用中文撰写，保留技术术语英文
 
 3. **CVE 提交渠道**:
    - **MITRE**: 主要 CVE CNA
@@ -790,8 +865,9 @@ CVSS: [评分] [向量]
 ## 相关模板和参考
 
 - `templates/vulnerability-report-template.md` - 漏洞报告格式 (中文)
+- `templates/per-vulnerability-verification-report-template.md` - 单漏洞验证报告格式 (中文，每验证一个漏洞生成一份)
 - `templates/summary-report-template.md` - 总结报告格式 (中文)
-- `templates/verification-report-template.md` - 验证报告格式 (中文)
+- `templates/verification-report-template.md` - 验证汇总报告格式 (中文，可选索引)
 - `templates/poc-template.py` - POC 脚本结构
 - `templates/subagent-skill-template.md` - 子代理技能模板
 - `templates/subagent-background-template.md` - 子代理背景文档模板
