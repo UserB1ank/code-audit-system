@@ -986,6 +986,7 @@ For each CVE candidate:
 
 | 语言 | 指南 | 内容 |
 |------|------|------|
+| Python | `references/python-guide.md` | SQL 注入、命令注入、路径遍历、反序列化（pickle/yaml）、SSTI、XXE、SSRF、开放重定向、信息泄露、弱加密、权限绕过、文件上传 |
 | PHP | `references/php-guide.md` | SQL 注入、命令注入、文件包含、XSS、反序列化、路径穿越、SSRF、认证问题 |
 | Java | `references/java-guide.md` | SQL 注入、命令注入、XXE、反序列化、路径穿越、SSRF、SSTI、JNDI 注入、Spring 特定问题 |
 | Rust | `references/rust-guide.md` | Unsoundness（unsafe 契约/型变/Send+Sync 误实现/内联汇编）、逻辑漏洞、并发竞态、资源耗尽（OOM/DoS）、整数与缓冲区、标准库 unsafe API 误用、依赖供应链 |
@@ -1006,6 +1007,7 @@ For each CVE candidate:
 - `templates/cve-intelligence-report-template.md` - CVE 情报分析报告模板 (专项审计模式)
 - `references/module-detection.md` - 按项目类型的模块检测
 - `references/project-structure.md` - 项目存储结构
+- `references/python-guide.md` - Python 漏洞模式 (Source → Sink)
 - `references/php-guide.md` - PHP 漏洞模式 (Source → Sink)
 - `references/java-guide.md` - Java 漏洞模式 (Source → Sink)
 - `references/rust-guide.md` - Rust 漏洞模式 (unsafe 契约、并发竞态、资源耗尽、供应链审计)
