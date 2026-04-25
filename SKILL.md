@@ -315,11 +315,46 @@ code-audit-projects/<project-name>/
 3. **确定应用类型** - Web 应用、系统服务、GUI、移动应用等
 4. **映射攻击面** - 用户输入点、认证机制、文件操作、网络接口
 
+**⭐ 代码知识图谱构建（codebase-memory MCP）**:
+
+在传统文件扫描之前，**优先使用 codebase-memory MCP 将目标仓库构建为代码知识图谱**，大幅提升后续审计的结构化理解能力：
+
+```markdown
+## 代码图谱构建流程
+
+### Step 1: 索引目标仓库
+调用 `index_repository` 将源码目录构建为图数据库：
+- 仓库路径: `code-audit-projects/<name>/source/`
+- 索引完成后，所有函数、类、调用关系、HTTP 端点将以图结构存储
+
+### Step 2: 架构概览
+调用 `get_architecture` 获取项目整体架构：
+- 模块划分、入口点、核心数据流
+- 自动识别的框架和设计模式
+
+### Step 3: 攻击面映射（基于图谱）
+- `search_graph(relationship="HTTP_CALLS")` — 发现所有 HTTP 端点（API 入口）
+- `search_graph(min_degree=10, relationship="CALLS", direction="inbound")` — 发现高扇入函数（被大量调用的核心逻辑）
+- `search_graph(max_degree=0, exclude_entry_points=true)` — 发现死代码（可能包含遗留危险逻辑）
+- `trace_path(function_name="<handler>", direction="outbound", depth=5)` — 从入口追踪完整调用链
+
+### Step 4: 危险 Sink 定位
+- `search_graph(name_pattern=".*execute.*")` — 查找 SQL 执行函数
+- `search_graph(name_pattern=".*system.*|.*popen.*|.*subprocess.*")` — 查找命令执行
+- `search_graph(name_pattern=".*open.*|.*read.*|.*write.*")` — 查找文件操作
+- `trace_path(direction="inbound")` 对每个 Sink 反向追踪调用来源
+```
+
+**何时使用图谱 vs 传统 grep**:
+- **图谱优先**: 调用链追踪、依赖分析、架构理解、影响范围评估
+- **grep 辅助**: 文本模式搜索、特定字符串查找、配置文件审查
+
 在 `workspace/00-work-background.md` 创建 **工作背景** 文档，包含:
 - 技术栈总结
 - 应用类型分类
 - **攻击面地图** (入口点、信任边界)
 - **高风险区域** (认证、文件操作、序列化、命令执行)
+- **⭐ 代码图谱关键发现**（从 codebase-memory 提取的架构、高扇入/扇出函数、端点列表）
 
 **使用**: `references/module-detection.md` 获取按项目类型的模块结构模板。
 
@@ -331,6 +366,14 @@ code-audit-projects/<project-name>/
 2. 将文件映射到每个模块
 3. 识别模块间依赖关系
 4. 创建模块依赖图
+
+**⭐ 图谱增强模块划分**:
+- `get_architecture` 获取自动识别的模块结构
+- `query_graph` 使用 Cypher 查询跨模块调用关系：
+  ```
+  MATCH (a)-[r:CALLS]->(b) WHERE a.file_path STARTS WITH '/module-a/' AND b.file_path STARTS WITH '/module-b/' RETURN a.name, b.name, count(r) ORDER BY count(r) DESC LIMIT 20
+  ```
+- 基于图谱的实际调用依赖（而非仅目录结构）划分模块，确保审计边界准确
 
 将模块映射存储在 `workspace/01-module-map.md`。
 
@@ -499,6 +542,64 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
 - 追踪完整调用链 (Source → Sink)
 - 记录安全控制措施和绕过方法
 - 过滤理论性问题
+- **⭐ 使用 codebase-memory MCP 图谱工具辅助审计**（见下方图谱增强审计流程）
+
+**⭐ 图谱增强审计流程（codebase-memory MCP）**:
+
+子代理在审计过程中，应充分利用代码知识图谱进行结构化分析。图谱在 Phase 2.1 已由 MainAgent 构建完成，子代理可直接查询：
+
+```markdown
+## Phase 1: 代码地图绘制 — 图谱增强
+
+### 1.1 模块结构概览
+- `get_architecture` — 获取模块整体架构和自动识别的设计模式
+- `get_graph_schema` — 了解该项目的节点/边类型
+
+### 1.2 入口点与 Sink 发现
+- `search_graph(label="Function", name_pattern=".*<module-pattern>.*")` — 发现模块内所有函数
+- `search_graph(relationship="HTTP_CALLS")` — 发现 HTTP 端点（攻击入口 Source）
+- `search_graph(name_pattern=".*execute.*|.*query.*|.*system.*|.*popen.*")` — 发现危险 Sink
+- `search_code(query="<dangerous_function>")` — 文本搜索补充图谱未覆盖的模式
+
+## Phase 2: Source → Sink 追踪 — 图谱核心价值
+
+### 2.1 正向追踪（Source → Sink）
+从用户输入入口追踪到危险操作：
+```
+trace_path(function_name="<handler>", direction="outbound", depth=5, risk_labels=true)
+```
+- `risk_labels=true` 自动标注路径中的高风险节点
+
+### 2.2 反向追踪（Sink → Source）
+从危险函数反向追踪所有调用来源：
+```
+trace_path(function_name="<dangerous_sink>", direction="inbound", depth=5)
+```
+- 快速判断是否存在用户可控数据到达 Sink 的路径
+
+### 2.3 完整调用上下文
+```
+trace_path(function_name="<target>", direction="both", depth=3)
+```
+- 同时获取调用者和被调用者，快速定位验证/过滤层
+
+### 2.4 跨模块调用链
+```cypher
+MATCH path = (src)-[:CALLS*1..6]->(sink)
+WHERE src.name =~ '.*<handler>.*' AND sink.name =~ '.*execute.*'
+RETURN path
+```
+
+## Phase 3: 安全控制分析 — 图谱辅助
+- `trace_path(direction="outbound")` 检查路径上是否有验证/过滤节点
+- 对比有/无安全控制的路径差异
+- `get_code_snippet(qualified_name="<validator>")` 快速查看验证函数实现
+
+## Phase 4: 报告阶段
+调用链记录应包含图谱 trace 的完整结果：
+- 调用深度、中间节点、风险标注
+- 每个节点的文件路径和行号（从 `get_code_snippet` 获取）
+```
 
 **⚠️ 子代理启动强制流程**: 子代理被调度后，必须**首先使用 Read 工具读取 `background.md` 和 `skill.md`**，然后基于这些定制文档中的指导开展审计。这些文档包含了针对该模块的技术侦察结果、高价值目标、审计思路和绕过分析，是提升发现率的关键。
 
@@ -1012,3 +1113,4 @@ For each CVE candidate:
 - `references/java-guide.md` - Java 漏洞模式 (Source → Sink)
 - `references/rust-guide.md` - Rust 漏洞模式 (unsafe 契约、并发竞态、资源耗尽、供应链审计)
 - `references/cve-intelligence-guide.md` - CVE 情报收集与分析指南 (专项审计模式)
+- **codebase-memory MCP** - 代码知识图谱工具，用于结构化代码理解、调用链追踪、架构分析 (审计流程各阶段均可使用)
