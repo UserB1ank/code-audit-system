@@ -42,6 +42,20 @@
       "prompt": "https://github.com/example/legacy-php-app.git 这个 PHP 老项目有很多安全问题，请找出所有可利用的漏洞",
       "expected_output": "识别 PHP 常见漏洞（SQL 注入、文件包含、反序列化），为关键漏洞编写验证 POC",
       "files": []
+    },
+    {
+      "id": 7,
+      "name": "specialized-mode-apache-tomcat",
+      "prompt": "请用专项审计模式审计 Apache Tomcat：https://github.com/apache/tomcat.git，参考历史 CVE 进行定向漏洞猎杀",
+      "expected_output": "使用 cve-search 查询 Tomcat 历史 CVE，分析攻击模式，拟合到当前代码，生成 CVE 情报报告后进行情报驱动的漏洞发现",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "specialized-mode-spring-framework",
+      "prompt": "https://github.com/spring-projects/spring-framework.git 请做深度审计，先查一下这个项目的历史漏洞再开始",
+      "expected_output": "自动识别为知名开源项目，触发专项审计模式，查询 Spring Framework 历史 CVE，提取 Source→Sink 模式，注入子代理背景文档",
+      "files": []
     }
   ]
 }

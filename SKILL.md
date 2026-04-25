@@ -46,6 +46,27 @@ description: CVE-oriented multi-agent code audit system. Use when user provides 
 
 ---
 
+## 审计模式
+
+项目初始化完成后、开始漏洞发现前，**必须询问用户选择审计模式**:
+
+> 请选择审计模式:
+> 1. **标准模式** — 直接进行代码审计，适用于未知项目或首次审计
+> 2. **专项审计模式** — 先通过 cve-search 查询产品的历史漏洞，分析攻击模式后拟合到当前代码，指导漏洞猎杀。适用于已知产品或有 CVE 历史的项目
+
+| 模式 | 适用场景 | 额外步骤 | 优势 |
+|------|----------|----------|------|
+| **标准模式** | 首次审计、内部项目、无 CVE 历史 | 无 | 流程简洁，快速开始 |
+| **专项审计模式** | 开源产品、有 CVE 历史、已知厂商 | Phase 2.0: CVE 情报收集 | 基于历史漏洞模式定向猎杀，发现率更高 |
+
+**专项审计模式触发条件** (用户未明确选择时自动判断):
+- 目标仓库属于知名开源组织 (apache, spring-projects, wordpress 等)
+- 用户明确提到产品名称且可映射到 cve-search vendor/product
+- 用户要求"深度审计"或"专项审计"
+- 用户提到需要参考历史漏洞
+
+---
+
 ## 何时使用此技能
 
 - 用户提供 git 仓库 URL 用于 **CVE 发现**
@@ -53,6 +74,7 @@ description: CVE-oriented multi-agent code audit system. Use when user provides 
 - 用户想发现 **CVE 级别** 问题 (RCE、SQLi、认证绕过等)
 - 用户需要已识别漏洞的 **武器化 POC** 代码
 - 用户需要包含利用细节的 **CVE 就绪报告**
+- 用户要求**专项审计** 或基于历史漏洞的定向分析
 
 ## 系统架构
 
@@ -79,11 +101,17 @@ description: CVE-oriented multi-agent code audit system. Use when user provides 
 ## 工作流程概览
 
 1. **项目收集** - 用户提供 git URL
-2. **漏洞发现** - 子代理审计代码模块
-3. **环境部署** (可选) - Docker 搭建
-4. **POC 编写** - 子代理编写利用脚本
-5. **验证测试** (可选) - 在部署环境中测试 POC
-6. **总结报告** - 主代理汇总所有发现
+2. **CVE 情报收集** (专项审计模式) - 查询历史 CVE，分析攻击模式，拟合到当前代码
+3. **漏洞发现** - 子代理审计代码模块
+4. **环境部署** (可选) - Docker 搭建
+5. **POC 编写** - 子代理编写利用脚本
+6. **验证测试** (可选) - 在部署环境中测试 POC
+7. **总结报告** - 主代理汇总所有发现
+
+```
+标准模式:  项目初始化 → 漏洞发现 → POC → 验证 → 报告
+专项审计:  项目初始化 → CVE情报收集 → 漏洞发现(情报驱动) → POC → 验证 → 报告
+```
 
 ## 逐步操作说明
 
@@ -176,6 +204,107 @@ code-audit-projects/<project-name>/
 ### 步骤 2: CVE 发现 (核心流程)
 
 这是核心漏洞猎杀阶段。主代理协调多个子代理。
+
+#### Phase 2.0: CVE 情报收集 (仅专项审计模式)
+
+> ⚠️ 此阶段仅在**专项审计模式**下执行。标准模式直接进入 Phase 2.1。
+
+**目标**: 利用 `cve-search` MCP 工具收集目标产品的历史漏洞情报，提取攻击模式，拟合到当前代码版本，生成可操作的审计指导。
+
+**使用**: `references/cve-intelligence-guide.md` 获取详细的情报收集方法论。
+
+##### 2.0.1: 厂商与产品识别
+
+1. **从仓库信息提取 vendor/product**:
+   - 解析 git URL 中的组织名和仓库名
+   - 参照 `references/cve-intelligence-guide.md` 第 5 节常见厂商映射表
+   - 准备多个变体名称 (如 `apache` / `apache_software_foundation`)
+
+2. **确认 cve-search 中的名称**:
+   - 调用 `mcp__cve-search__browse_vendors()` 确认 vendor 名称
+   - 调用 `mcp__cve-search__browse_products(vendor="xxx")` 确认 product 名称
+   - 如未命中，尝试模糊匹配或从 `metadata.json` 中的 framework 字段推断
+
+##### 2.0.2: CVE 数据收集
+
+1. **查询产品 CVE**:
+   - 调用 `mcp__cve-search__search_cves(vendor="xxx", product="xxx")` 获取完整 CVE 列表
+   - 记录总数和各严重级别数量
+
+2. **获取关键 CVE 详情**:
+   - 对 Critical (CVSS ≥ 9.0) 的 CVE: 逐一调用 `mcp__cve-search__get_cve(cve_id="CVE-XXXX-XXXXX")` 获取详情
+   - 对 High (7.0-8.9) 的 CVE: 选择性获取详情 (优先近 3 年的)
+   - 重点关注: Root Cause、Source → Sink 链、修复方式、绕过技术
+
+3. **查询相关组件 CVE** (可选):
+   - 从 `metadata.json` 中的 framework 依赖列表
+   - 对主要依赖 (如 spring-framework、django、flask) 执行相同的 CVE 查询
+   - 这可以发现供应链层面的已知漏洞
+
+##### 2.0.3: 攻击模式分析
+
+对收集到的 CVE 数据进行分析:
+
+1. **统计漏洞类型分布** — 按 CWE 分类，识别 Top 5 高频漏洞类型
+2. **提取攻击向量** — 分析 CVSS 向量字符串，确定主要攻击入口 (网络/本地/物理)
+3. **识别高频组件** — 哪些组件/模块在历史 CVE 中最常被攻击
+4. **提取 Source → Sink 模式** — 从 CVE 详情中抽象出可复用的攻击模式
+5. **分析时间趋势** — 近年漏洞类型变化，推测未来趋势
+
+##### 2.0.4: 模式拟合与变体推测
+
+将历史攻击模式**拟合**到当前代码版本:
+
+1. **补丁完整性检查**:
+   - 获取关键 CVE 的修复补丁 (通过 git log 或 commit 信息)
+   - 检查修复是否只覆盖了报告点，同类型其他位置是否遗漏
+
+2. **未修复变体推测**:
+   - 基于历史 CVE 的根因模式，在当前代码中搜索同类不安全代码
+   - 推测修复补丁可能引入的新攻击面
+   - 识别功能相似但未受补丁覆盖的代码路径
+
+3. **攻击面拟合**:
+   - 历史漏洞的 Source 入口在当前版本是否仍可达
+   - 历史漏洞的 Sink 函数在当前版本是否仍存在
+   - 评估每种模式在当前代码中的存在概率 (🔴 高 / 🟡 中 / 🟢 低)
+
+##### 2.0.5: 情报报告生成与注入
+
+1. **生成 CVE 情报报告**: `workspace/02-cve-intelligence.md`
+   - 使用 `templates/cve-intelligence-report-template.md` 格式
+   - 包含: 统计分析、高风险组件、攻击模式拟合、未修复变体推测
+
+2. **更新工作背景文档**: 将情报摘要注入 `workspace/00-work-background.md`
+   - 使用 `templates/work-background-template.md` 中的 CVE 情报章节
+
+3. **注入子代理背景文档**: 为每个子代理的 `background.md` 增加专项指导
+   - 使用 `templates/subagent-background-template.md` 中的 CVE 情报章节
+   - 包含: 该模块相关的历史 CVE、推测的未修复变体、搜索策略
+   - 优先级调整建议
+
+4. **更新审计状态**:
+   ```json
+   {
+     "audit_mode": "specialized",
+     "cve_intelligence": {
+       "vendor": "apache",
+       "product": "tomcat",
+       "total_known_cves": 245,
+       "critical_count": 18,
+       "high_count": 67,
+       "intelligence_report": "workspace/02-cve-intelligence.md",
+       "predicted_variants": 5,
+       "high_probability_variants": 2
+     }
+   }
+   ```
+
+**专项模式下子代理行为差异**:
+- 子代理在 Phase 1 (代码地图绘制) 中，**优先搜索历史 CVE 的同类代码模式**
+- 子代理在 Phase 2 (数据流追踪) 中，**优先追踪推测的未修复变体**
+- 子代理在 Phase 3 (安全控制分析) 中，**优先分析历史修复补丁的完整性**
+- 子代理在 Phase 4 (CVE 发现与报告) 中，需标注发现的漏洞是否为历史 CVE 的变体
 
 #### Phase 2.1: 技术侦察
 
@@ -873,7 +1002,9 @@ For each CVE candidate:
 - `templates/subagent-background-template.md` - 子代理背景文档模板
 - `templates/work-background-template.md` - 工作背景模板 (中文)
 - `templates/module-info-template.md` - 模块信息模板 (中文)
+- `templates/cve-intelligence-report-template.md` - CVE 情报分析报告模板 (专项审计模式)
 - `references/module-detection.md` - 按项目类型的模块检测
 - `references/project-structure.md` - 项目存储结构
 - `references/php-guide.md` - PHP 漏洞模式 (Source → Sink)
 - `references/java-guide.md` - Java 漏洞模式 (Source → Sink)
+- `references/cve-intelligence-guide.md` - CVE 情报收集与分析指南 (专项审计模式)

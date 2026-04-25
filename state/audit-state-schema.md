@@ -18,9 +18,9 @@ code-audit-projects/<project>/state/
 ```json
 {
   "schema": "code-audit-system.audit-state.v2",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "updated_at": "2026-04-02T13:30:00+08:00",
-  
+
   "project": {
     "id": 4,
     "name": "ecms",
@@ -30,10 +30,13 @@ code-audit-projects/<project>/state/
     "build_tool": "Maven",
     "files_count": 483
   },
-  
+
+  "audit_mode": "standard",
+  "cve_intelligence": null,
+
   "status": "auditing",
   "phase": "phase_2_discovery",
-  
+
   "phases": {
     "phase_1_init": {
       "status": "completed",
@@ -43,6 +46,15 @@ code-audit-projects/<project>/state/
         "work_background": "workspace/00-work-background.md",
         "module_map": "workspace/01-module-map.md"
       }
+    },
+    "phase_2_0_intelligence": {
+      "status": "skipped",
+      "started_at": null,
+      "completed_at": null,
+      "outputs": {
+        "cve_intelligence_report": "workspace/02-cve-intelligence.md"
+      },
+      "note": "仅专项审计模式执行此阶段，标准模式下 status 为 skipped"
     },
     "phase_2_discovery": {
       "status": "in_progress",
@@ -183,11 +195,15 @@ code-audit-projects/<project>/state/
 {"timestamp": "2026-04-02T13:05:00+08:00", "event": "git_clone_completed", "files": 483}
 {"timestamp": "2026-04-02T13:05:05+08:00", "event": "background_created", "file": "workspace/00-work-background.md"}
 {"timestamp": "2026-04-02T13:05:10+08:00", "event": "module_map_created", "file": "workspace/01-module-map.md"}
+{"timestamp": "2026-04-02T13:05:15+08:00", "event": "audit_mode_selected", "mode": "specialized", "vendor": "exoplatform", "product": "ecms"}
+{"timestamp": "2026-04-02T13:05:20+08:00", "event": "cve_search_started", "vendor": "exoplatform", "product": "ecms"}
+{"timestamp": "2026-04-02T13:08:00+08:00", "event": "cve_intelligence_completed", "total_cves": 45, "critical": 5, "high": 12, "predicted_variants": 3}
+{"timestamp": "2026-04-02T13:08:05+08:00", "event": "intelligence_report_created", "file": "workspace/02-cve-intelligence.md"}
 {"timestamp": "2026-04-02T13:06:00+08:00", "event": "subagent_started", "id": "agent-services", "module": "core/services/"}
 {"timestamp": "2026-04-02T13:06:01+08:00", "event": "subagent_started", "id": "agent-connector", "module": "core/connector/"}
 {"timestamp": "2026-04-02T13:06:02+08:00", "event": "subagent_started", "id": "agent-viewer", "module": "core/viewer/"}
 {"timestamp": "2026-04-02T13:10:00+08:00", "event": "subagent_progress", "id": "agent-services", "phase": "phase_2", "files_scanned": 15}
-{"timestamp": "2026-04-02T13:15:00+08:00", "event": "vulnerability_found", "id": "agent-services", "type": "JCR SQL Injection", "cvss": 9.8}
+{"timestamp": "2026-04-02T13:15:00+08:00", "event": "vulnerability_found", "id": "agent-services", "type": "JCR SQL Injection", "cvss": 9.8, "is_variant": true, "historical_ref": "CVE-2023-XXXXX"}
 {"timestamp": "2026-04-02T13:20:00+08:00", "event": "subagent_completed", "id": "agent-services", "vulnerabilities": 3}
 ```
 
@@ -222,6 +238,32 @@ state/checkpoint-<timestamp>.json
 ### 项目状态
 
 ```json
+{
+  "status": "init|cloning|intelligence_gathering|auditing|poc_developing|verifying|reporting|completed|paused|failed"
+}
+```
+
+### 审计模式
+
+```json
+{
+  "audit_mode": "standard|specialized",
+  "cve_intelligence": {
+    "vendor": "apache",
+    "product": "tomcat",
+    "total_known_cves": 245,
+    "critical_count": 18,
+    "high_count": 67,
+    "intelligence_report": "workspace/02-cve-intelligence.md",
+    "predicted_variants": 5,
+    "high_probability_variants": 2
+  }
+}
+```
+
+- `standard`: 标准模式，直接进行代码审计
+- `specialized`: 专项审计模式，先收集 CVE 情报再进行漏洞猎杀
+- `cve_intelligence`: 仅专项审计模式下非 null
 {
   "status": "init|cloning|auditing|poc_developing|verifying|reporting|completed|paused|failed"
 }
