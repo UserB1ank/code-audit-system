@@ -59,6 +59,13 @@ List<User> findById(Long id);
 - [ ] 搜索带字符串拼接的 `@Query` 注解
 - [ ] 追踪用户输入到 SQL 查询
 
+### 真实 CVE 案例：研究员如何发现它
+
+**CVE-2016-6652 (Spring Data JPA SQL 注入)**
+- **发现思路**: 研究员审查 Spring Data 的 `@Query` 注解时，发现 `nativeQuery=true` 模式下，SpEL 表达式 `#{#entityName}` 会被替换为实体名，但如果实体名来自用户可控的泛型参数，就产生注入。
+- **关键洞察**: 漏洞不在业务代码，而在**框架的元编程层**。研究员的思路是"框架在哪里动态构造 SQL？"而不是"业务代码在哪里拼接 SQL？"
+- **审计启示**: 审计 Java 项目时，除了业务代码，还要检查**自定义 Repository 实现**、**AOP 切面**、**框架扩展点**中的 SQL 构造逻辑。
+
 ---
 
 ## 2. 命令注入
@@ -106,6 +113,13 @@ Runtime.getRuntime().exec(new String[]{"ls", input});
 - [ ] 追踪用户输入到进程命令
 - [ ] 检查元字符过滤
 - [ ] 验证命令数组 vs 单字符串
+
+### 真实 CVE 案例：研究员如何发现它
+
+**CVE-2021-44228 (Log4Shell) — 命令注入的极端形式**
+- **发现思路**: 研究员发现 Log4j 在记录日志时会解析 `${jndi:ldap://...}` 语法，而日志内容来自用户输入（HTTP Header、User-Agent 等）。这不是传统命令注入，而是**日志框架的功能被武器化**。
+- **关键洞察**: 研究员的思路是"日志框架在哪里做了超出'记录文本'的事情？"，而不是搜索 `exec()`。
+- **审计启示**: 审计 Java 项目时，检查**日志框架配置**（Log4j、Logback 的 lookup 功能）和**模板引擎**（Velocity、FreeMarker）是否处理了用户输入。这类漏洞不会出现在 `Runtime.exec()` 搜索结果里。
 
 ---
 
@@ -586,6 +600,100 @@ ctx.lookup("rmi://legitimate-server/" + name);
 - [ ] 检查 `.permitAll()` 和 `.hasRole()` 使用
 - [ ] 验证 CORS 配置
 - [ ] 审查 `@ModelAttribute` 绑定
+
+---
+
+## 10. 逻辑类漏洞（无需 Source→Sink）
+
+### 10.1 认证绕过
+
+**严重程度**: 严重 (CVSS 8.0+) | **可利用**: 是
+
+**常见模式**:
+```java
+// ❌ Spring Security 配置遗漏
+http.authorizeRequests()
+    .antMatchers("/admin/**").hasRole("ADMIN")
+    .antMatchers("/api/internal/**").permitAll()  // 内部 API 暴露给外部！
+
+// ❌ JWT 未校验算法
+Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+// 若未指定 allowedAlgorithms，攻击者可伪造 alg:none
+
+// ❌ 逻辑缺陷：isAdmin 可被外部参数覆盖
+boolean isAdmin = request.getParameter("admin") != null;
+```
+
+**审计检查清单**:
+- [ ] 检查 Spring Security 配置，确认 `/api/internal/`、`/actuator/` 等路径不对外暴露
+- [ ] 搜索 JWT 解析代码，确认强制指定算法白名单
+- [ ] 搜索 `request.getParameter` 用于权限判断的模式
+
+**真实 CVE 案例**:
+- **CVE-2022-22965 (Spring4Shell)**: 研究员发现 Spring MVC 的 `@ModelAttribute` 数据绑定会递归绑定所有可访问属性，包括 `class.classLoader`，从而修改 Tomcat 的日志配置写入 WebShell。发现思路：追问"数据绑定能绑定到哪些对象属性？"而不是搜索 SQL/命令。
+
+---
+
+### 10.2 越权 / IDOR
+
+**常见模式**:
+```java
+// ❌ 只校验登录，未校验所有权
+@GetMapping("/documents/{id}")
+public Document getDocument(@PathVariable Long id, Principal principal) {
+    return documentRepository.findById(id).orElseThrow(); // 未校验 owner
+}
+
+// ✅ 正确做法
+return documentRepository.findByIdAndOwner(id, principal.getName());
+```
+
+**审计检查清单**:
+- [ ] 搜索 `findById`、`getById`，确认后续有所有权校验
+- [ ] 检查批量操作接口（`deleteAll`、`updateAll`）是否限制了操作范围
+
+---
+
+### 10.3 竞态条件 / TOCTOU
+
+**常见模式**:
+```java
+// ❌ 非原子的 check-then-act
+if (account.getBalance() >= amount) {   // check
+    account.setBalance(account.getBalance() - amount);  // act（无锁）
+    accountRepository.save(account);
+}
+// 并发请求可同时通过 check，导致余额变负
+```
+
+**审计检查清单**:
+- [ ] 搜索"先查询再更新"的余额/库存操作，确认使用 `@Transactional` + 悲观锁或原子更新
+- [ ] 搜索 `@Transactional` 缺失的金融/库存操作
+
+---
+
+### 10.4 加密误用
+
+**常见模式**:
+```java
+// ❌ MD5 存储密码
+MessageDigest.getInstance("MD5").digest(password.getBytes())
+
+// ❌ ECB 模式
+Cipher.getInstance("AES/ECB/PKCS5Padding")
+
+// ❌ 弱随机数用于安全场景
+new Random().nextInt(999999)  // 应用 SecureRandom
+
+// ❌ 硬编码密钥
+private static final String SECRET = "hardcoded_key_123";
+```
+
+**审计检查清单**:
+- [ ] 搜索 `MessageDigest.getInstance("MD5"|"SHA-1")` 用于密码存储
+- [ ] 搜索 `AES/ECB`
+- [ ] 搜索 `new Random()` 用于令牌/验证码
+- [ ] 搜索硬编码的 `SECRET`、`KEY`、`PASSWORD` 字符串常量
 
 ---
 

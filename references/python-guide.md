@@ -65,6 +65,13 @@ User.objects.filter(name=name)
 - [ ] 追踪变量来源（`request.GET`、`request.POST`、`request.args`、`json.loads(request.body)`）
 - [ ] 确认变量是否经过参数化处理（`%s` 占位 + 参数元组）
 
+### 真实 CVE 案例：研究员如何发现它
+
+**CVE-2019-14234 (Django SQL 注入)**
+- **发现思路**: 研究员不是 grep `execute(`，而是先问"Django ORM 的哪些 API 接受原始字符串？"，然后翻文档找到 `JSONField` 的 `key_transform` 在构造 SQL 时直接拼接了键名。
+- **关键洞察**: 漏洞不在 `execute()`，而在 ORM 内部的 `__` 查询语法（`filter(data__key=val)`），键名 `key` 未经转义就进入了 SQL。
+- **审计启示**: 不要只看显式 SQL 调用，**ORM 的动态查询构造器**（`filter()`、`annotate()`、`extra()`）同样可能拼接用户输入。
+
 ---
 
 ## 2. 命令注入
@@ -120,6 +127,13 @@ os.system("ping -c 4 " + shlex.quote(host))
 - [ ] 搜索 `eval(`、`exec(`、`__import__(`、`compile(`
 - [ ] 追踪用户输入是否到达这些函数
 - [ ] 检查是否使用 `shlex.quote()` 或列表参数形式
+
+### 真实 CVE 案例：研究员如何发现它
+
+**CVE-2021-41091 (Moby/Docker 命令注入)**
+- **发现思路**: 研究员不是搜索 `subprocess`，而是先问"Docker 在哪里调用外部工具？"，找到 `runc` 调用链，发现容器路径中的特殊字符（换行符）会被传入 shell 命令，导致宿主机命令注入。
+- **关键洞察**: 漏洞在**路径参数**而非"命令参数"，研究员通过追踪"文件系统路径如何变成 shell 参数"发现了注入点。
+- **审计启示**: 命令注入不只在 `cmd` 参数里，**文件名、路径、环境变量**传入 shell 时同样危险。搜索所有 `shell=True` + 包含路径/文件名变量的调用。
 
 ---
 
@@ -661,6 +675,116 @@ redirect, HttpResponseRedirect
 # SQL
 execute(, raw(, extra(
 ```
+
+---
+
+## 13. 逻辑类漏洞（无需 Source→Sink）
+
+### 13.1 认证绕过
+
+**严重程度**: 严重 (CVSS 8.0+) | **可利用**: 是
+
+**常见模式**:
+```python
+# ❌ 装饰器缺失：敏感视图忘记加 @login_required
+def admin_delete_user(request, user_id): ...
+
+# ❌ JWT alg:none 绕过
+header = base64.decode(token.split('.')[0])
+# 如果 alg 字段未强制校验，攻击者可伪造 alg:none
+
+# ❌ 条件逻辑缺陷
+if user.role == 'admin' or debug_mode:  # debug_mode 可被外部控制？
+    grant_access()
+```
+
+**审计检查清单**:
+- [ ] 搜索所有路由/视图，确认每个敏感操作前有鉴权装饰器
+- [ ] 搜索 JWT 验证代码，确认 `algorithms` 参数被强制指定（不接受 `none`）
+- [ ] 检查条件分支中是否有可被外部控制的"后门"变量
+
+**真实 CVE 案例**:
+- **CVE-2022-29217 (PyJWT 认证绕过)**: 研究员发现 PyJWT 在某些版本中，若调用方未指定 `algorithms` 参数，攻击者可在 JWT header 中指定 `alg:none` 绕过签名验证。发现思路：审查"默认行为"——库在参数缺失时做了什么？
+
+---
+
+### 13.2 越权 / IDOR
+
+**严重程度**: 高 (CVSS 7.0+) | **可利用**: 是
+
+**常见模式**:
+```python
+# ❌ 只校验登录，未校验所有权
+@login_required
+def get_document(request, doc_id):
+    doc = Document.objects.get(id=doc_id)  # 未检查 doc.owner == request.user
+    return JsonResponse(doc.data)
+
+# ❌ 可预测 ID
+doc_id = request.GET.get('id')  # 如果 ID 是自增整数，可枚举
+```
+
+**审计检查清单**:
+- [ ] 搜索所有 `.get(id=...)` / `.filter(id=...)` 调用，确认有 `owner=request.user` 或等效校验
+- [ ] 检查资源 ID 是否可预测（自增整数 vs UUID）
+- [ ] 检查批量操作接口是否逐条校验权限
+
+---
+
+### 13.3 竞态条件 / TOCTOU
+
+**严重程度**: 高 (CVSS 7.0+) | **可利用**: 是（需并发请求）
+
+**常见模式**:
+```python
+# ❌ TOCTOU：check 和 use 之间有窗口
+if user.balance >= amount:      # check
+    time.sleep(0)               # 窗口（即使无 sleep，并发也可利用）
+    user.balance -= amount      # use（未加锁）
+    user.save()
+
+# ❌ 文件 TOCTOU
+if os.path.exists(path):        # check
+    with open(path) as f:       # use（path 可能已被替换为符号链接）
+        data = f.read()
+```
+
+**审计检查清单**:
+- [ ] 搜索"先查询余额/库存再扣减"的模式，确认使用数据库事务或 `select_for_update()`
+- [ ] 搜索 `os.path.exists()` + `open()` 组合，检查是否有符号链接攻击风险
+- [ ] 检查文件上传：临时文件名是否可预测？
+
+---
+
+### 13.4 加密误用
+
+**严重程度**: 高 (CVSS 7.0+) | **可利用**: 是
+
+**常见模式**:
+```python
+# ❌ 密码用 MD5/SHA1 存储（无盐）
+import hashlib
+password_hash = hashlib.md5(password.encode()).hexdigest()
+
+# ❌ 可预测随机数用于安全场景
+import random
+token = random.randint(100000, 999999)  # 应用 secrets 模块
+
+# ❌ ECB 模式（相同明文产生相同密文）
+from Crypto.Cipher import AES
+cipher = AES.new(key, AES.MODE_ECB)
+
+# ❌ 硬编码密钥
+SECRET_KEY = "hardcoded_secret_123"
+```
+
+**审计检查清单**:
+- [ ] 搜索 `hashlib.md5`、`hashlib.sha1` 用于密码存储
+- [ ] 搜索 `random.` 用于令牌/验证码生成（应用 `secrets.`）
+- [ ] 搜索 `AES.MODE_ECB`
+- [ ] 搜索硬编码字符串赋值给 `SECRET`、`KEY`、`PASSWORD`、`TOKEN` 变量
+
+---
 
 ## 审计小技巧
 

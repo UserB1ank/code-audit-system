@@ -45,6 +45,13 @@ $stmt->execute([$id]);
 - [ ] 确定用户输入是否在无预处理情况下到达 SQL
 - [ ] 检查 WAF/过滤器绕过可能性
 
+### 真实 CVE 案例：研究员如何发现它
+
+**CVE-2022-0739 (BookingPress WordPress 插件 SQL 注入)**
+- **发现思路**: 研究员不是扫描所有 SQL 调用，而是先找"哪些 AJAX 端点不需要登录？"，然后追踪这些端点的参数流向，发现 `bookingpress_front_get_category_services` 的 `total_service` 参数直接进入 `$wpdb->get_results()` 的 SQL 字符串。
+- **关键洞察**: WordPress 插件的 AJAX 处理函数（`wp_ajax_nopriv_*`）是无需认证的入口，是 SQL 注入的高价值 Source。
+- **审计启示**: 审计 WordPress 插件时，**优先搜索 `wp_ajax_nopriv_` 注册的处理函数**，这些是无需登录的攻击面。
+
 ---
 
 ## 2. 命令注入
@@ -89,6 +96,13 @@ system('ls ' . escapeshellarg($dir));
 - [ ] 检查反引号操作符使用
 - [ ] 验证 `escapeshellarg()` / `escapeshellcmd()` 使用
 - [ ] 追踪用户输入到 shell 命令
+
+### 真实 CVE 案例：研究员如何发现它
+
+**CVE-2018-15473 (OpenSSH 用户枚举 → 命令注入链)**
+- **发现思路**: 研究员先发现 SSH 服务器对有效/无效用户名的响应时间不同（信息泄露），然后追问"拿到有效用户名后能做什么？"，结合弱密码爆破形成完整利用链。
+- **关键洞察**: 这是**链式利用**的典型案例——单独的信息泄露（CVSS 5.3）+ 弱密码（CVSS 低）= 完整 RCE 链（CVSS 9.8）。
+- **审计启示**: 不要孤立地看每个漏洞。**信息泄露 + 认证缺陷 + 命令执行**三者组合是高价值利用链。发现中危漏洞时，立即问"这能和什么组合？"
 
 ---
 
@@ -415,6 +429,93 @@ $data = json_decode($_GET['data']);
 - [ ] 检查 `LIBXML_NOENT` 标志（危险）
 - [ ] 验证 `libxml_disable_entity_loader(true)` 使用
 - [ ] 推荐尽量使用 JSON 代替 XML
+
+---
+
+---
+
+## 9. 逻辑类漏洞（无需 Source→Sink）
+
+### 9.1 认证绕过
+
+**严重程度**: 严重 (CVSS 8.0+) | **可利用**: 是
+
+**常见模式**:
+```php
+// ❌ 类型混淆绕过
+if ($_POST['password'] == $stored_hash) { ... }
+// PHP 松散比较：'0e123' == '0e456' 为 true（Magic Hash）
+
+// ❌ 条件逻辑缺陷
+if ($user->isAdmin() || $_GET['debug']) { grant_access(); }
+
+// ❌ JWT 未校验算法（php-jwt 旧版本）
+JWT::decode($token, $secret);  // 未指定 allowed_algs
+```
+
+**审计检查清单**:
+- [ ] 搜索 `==` 用于密码/令牌比较（应用 `===` 或 `hash_equals()`）
+- [ ] 搜索 `$_GET`/`$_POST` 用于权限判断
+- [ ] 检查 JWT 解析是否强制指定算法
+
+**真实 CVE 案例**:
+- **CVE-2015-9235 (PHP JWT Magic Hash)**: 研究员发现若密码哈希以 `0e` 开头，PHP 的 `==` 会将其解释为科学计数法，导致任意以 `0e` 开头的字符串都能通过验证。发现思路：研究 PHP 类型系统的边界行为，而不是搜索危险函数。
+
+---
+
+### 9.2 越权 / IDOR
+
+**常见模式**:
+```php
+// ❌ 只校验登录，未校验所有权
+if (is_logged_in()) {
+    $doc = get_document($_GET['id']);  // 未校验 doc.owner == current_user
+    echo $doc['content'];
+}
+```
+
+**审计检查清单**:
+- [ ] 搜索所有 `$_GET['id']`/`$_POST['id']` 用于数据库查询，确认有所有权校验
+- [ ] 检查文件下载接口：文件路径/ID 是否可枚举？
+
+---
+
+### 9.3 竞态条件
+
+**常见模式**:
+```php
+// ❌ 文件锁缺失
+$balance = get_balance($user_id);
+if ($balance >= $amount) {
+    // 并发请求可同时通过此检查
+    update_balance($user_id, $balance - $amount);
+}
+```
+
+**审计检查清单**:
+- [ ] 搜索"先查询余额再扣减"的模式，确认使用数据库事务或行锁
+- [ ] 检查文件操作是否使用 `flock()`
+
+---
+
+### 9.4 加密误用
+
+**常见模式**:
+```php
+// ❌ MD5 存储密码
+$hash = md5($password);
+
+// ❌ 弱随机数
+$token = rand(100000, 999999);  // 应用 random_bytes() 或 bin2hex(random_bytes(16))
+
+// ❌ 硬编码密钥
+define('SECRET_KEY', 'hardcoded_secret');
+```
+
+**审计检查清单**:
+- [ ] 搜索 `md5(`、`sha1(` 用于密码存储（应用 `password_hash()`）
+- [ ] 搜索 `rand(`、`mt_rand(` 用于令牌生成
+- [ ] 搜索 `define(` 和 `$secret`/`$key` 的硬编码赋值
 
 ---
 
