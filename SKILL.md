@@ -79,39 +79,49 @@ description: CVE-oriented multi-agent code audit system. Use when user provides 
 ## 系统架构
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          主代理                                   │
-│  - 编排工作流程                                                   │
-│  - 管理子代理工作区                                               │
-│  - 协调模块检测                                                   │
-│  - 汇总报告                                                      │
-│  - 与用户交互                                                     │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        │                     │                     │
-        ▼                     ▼                     ▼
-┌───────────────┐   ┌─────────────────┐   ┌───────────────┐
-│  子代理 1      │   │   子代理 2       │   │  子代理 N      │
-│  模块 A       │   │   模块 B         │   │  模块 N        │
-│  漏洞扫描器    │   │   漏洞扫描器     │   │  漏洞扫描器    │
-└───────────────┘   └─────────────────┘   └───────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                          主代理                                    │
+│  - 编排工作流程                                                    │
+│  - Phase 2A: 快速预扫描 + 立即派发子代理                           │
+│  - Phase 2B: 深度侦察 (与子代理并行)                               │
+│  - Phase 2C: 增量情报注入子代理                                    │
+│  - 管理子代理工作区                                                │
+│  - 汇总报告                                                       │
+│  - 与用户交互                                                      │
+└──────────────────────────────────────────────────────────────────┘
+          │                           │
+          │ Phase 2A: 立即派发         │ Phase 2B/2C: 深度侦察 + 情报注入
+          │ (基于快速预扫描)           │ (与子代理并行, 持续更新)
+          ▼                           ▼
+┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
+│  子代理 1         │   │   子代理 2        │   │  子代理 N         │
+│  模块 A          │   │   模块 B          │   │  模块 N           │
+│  漏洞扫描器       │   │   漏洞扫描器      │   │  漏洞扫描器        │
+│                  │   │                  │   │                   │
+│  DRAFT 背景启动   │   │  DRAFT 背景启动   │   │  DRAFT 背景启动    │
+│  ↓               │   │  ↓               │   │  ↓                │
+│  接收 FINAL 注入  │   │  接收 FINAL 注入  │   │  接收 FINAL 注入   │
+└──────────────────┘   └──────────────────┘   └──────────────────┘
 ```
 
 ## 工作流程概览
 
 1. **项目收集** - 用户提供 git URL
 2. **CVE 情报收集** (专项审计模式) - 查询历史 CVE，分析攻击模式，拟合到当前代码
-3. **漏洞发现** - 子代理审计代码模块
+3. **漏洞发现** - 快速预扫描后立即派发子代理，深度侦察与子代理审计并行
 4. **环境部署** (可选) - Docker 搭建
 5. **POC 编写** - 子代理编写利用脚本
 6. **验证测试** (可选) - 在部署环境中测试 POC
 7. **总结报告** - 主代理汇总所有发现
 
 ```
-标准模式:  项目初始化 → 漏洞发现 → POC → 验证 → 报告
-专项审计:  项目初始化 → CVE情报收集 → 漏洞发现(情报驱动) → POC → 验证 → 报告
+标准模式:  项目初始化 → 快速预扫描 → 子代理审计(并行) → POC → 验证 → 报告
+                              ↘ MainAgent深度侦察(并行) ↗
+专项审计:  项目初始化 → CVE情报收集 → 快速预扫描 → 子代理审计(并行) → POC → 验证 → 报告
+                                          ↘ MainAgent深度侦察(并行) ↗
 ```
+
+**并行模型**: 快速预扫描（2A）完成后立即派发子代理，MainAgent 随后在后台执行深度侦察（2B），侦察结果通过增量注入（2C）实时传递给子代理。子代理审计与 MainAgent 深度侦察同时进行，总耗时由最长路径决定，而非各阶段累加。
 
 ## 逐步操作说明
 
@@ -393,21 +403,138 @@ code-audit-projects/<project-name>/
 - 子代理在 Phase 3 (安全控制分析) 中，**优先分析历史修复补丁的完整性**
 - 子代理在 Phase 4 (CVE 发现与报告) 中，需标注发现的漏洞是否为历史 CVE 的变体
 
-#### Phase 2.1: 技术侦察
+#### Phase 2A: 快速预扫描与并行派发 (5 分钟内完成, 与 2B/2C 衔接)
 
-分析项目以发现 CVE:
+**核心目标**: 用最短时间获取派发子代理所需的最小信息，在深度侦察完成前就启动子代理审计。
 
-1. **识别编程语言** - 扫描文件扩展名、包文件
-2. **检测框架和组件** - 检查 package.json、requirements.txt、pom.xml 等
-3. **确定应用类型** - Web 应用、系统服务、GUI、移动应用等
-4. **映射攻击面** - 用户输入点、认证机制、文件操作、网络接口
+##### 2A.1: 快速语言/框架识别 (30 秒)
 
-**⭐ 代码知识图谱构建（codebase-memory MCP）**:
+```bash
+# 统计文件扩展名分布
+find source/ -type f -name "*.java" | wc -l
+find source/ -type f -name "*.py" | wc -l
+find source/ -type f -name "*.rs" | wc -l
+find source/ -type f -name "*.php" | wc -l
+find source/ -type f -name "*.go" | wc -l
+find source/ -type f -name "*.js" -o -name "*.ts" | wc -l
+```
 
-在传统文件扫描之前，**优先使用 codebase-memory MCP 将目标仓库构建为代码知识图谱**，大幅提升后续审计的结构化理解能力：
+解析关键包文件（存在则读取）:
+- `package.json` → 项目名、框架、Node.js 版本
+- `pom.xml` / `build.gradle` → Java 框架、依赖
+- `requirements.txt` / `setup.py` / `pyproject.toml` → Python 框架
+- `Cargo.toml` → Rust 依赖
+- `go.mod` → Go 模块
+- `composer.json` → PHP 框架
 
-```markdown
-## 代码图谱构建流程
+**无需深度分析框架版本和完整依赖关系** — 这是 Phase 2B 的工作。
+
+##### 2A.2: 快速目录结构与模块划分 (1-2 分钟)
+
+```bash
+# 列出顶层目录结构
+ls -la source/
+
+# 统计各子目录文件数
+find source/ -maxdepth 3 -type f | cut -d/ -f2- | sort | uniq -c | sort -rn | head -30
+```
+
+基于目录名和 `references/module-detection.md` 快速匹配项目类型:
+- 有 `controllers/` + `models/` + `views/` → MVC Web 应用
+- 有 `services/` 下多个子目录 → 微服务
+- 有 `cmd/` + `internal/` + `pkg/` → Go 项目
+- 有 `src/main/java/` + `src/main/resources/` → Java Maven 项目
+
+**粗略模块划分**（仅基于目录边界，不深入依赖分析）:
+- 每个顶层目录或核心子目录 = 一个模块
+- 模块依赖关系暂时标记为"未知"，在 2B 中精确分析
+
+##### 2A.3: 快速攻击面草图 (1-2 分钟)
+
+grep 关键模式获取入口点和危险函数的初步分布:
+
+```bash
+# HTTP 端点入口
+grep -rn "@RequestMapping\|@GetMapping\|@PostMapping\|@PutMapping\|@DeleteMapping" source/ | head -50
+grep -rn "app\.\(get\|post\|put\|delete\|patch\)(" source/ | head -50
+grep -rn "Route::\|@route\|\$_GET\|\$_POST\|\$_REQUEST" source/ | head -50
+grep -rn "#\[\(get\|post\|put\|delete\)\]" source/ | head -50
+
+# 危险 Sink
+grep -rn "\.execute\(\|\.executeQuery\(\|\.executeUpdate\(" source/ | head -30
+grep -rn "system\(\|exec\(\|popen\(\|subprocess\|Runtime\.exec\|ProcessBuilder" source/ | head -30
+grep -rn "pickle\.\|yaml\.load\(\|unserialize\(\|json\.parse\|readObject" source/ | head -30
+grep -rn "\.read\(\)\|\.write\(\)\|\.open\(\|FileInputStream\|FileOutputStream" source/ | head -30
+```
+
+**不追踪调用链，仅记录位置** — 完整追踪是子代理的工作。
+
+##### 2A.4: 创建草稿文档并立即派发 (1 分钟)
+
+1. **创建工作背景文档草稿** `workspace/00-work-background.md`:
+   - 在文档头部标注 `> **状态: DRAFT v1** — 快速预扫描结果，深度侦察完成后将更新为 FINAL`
+   - 填入快速识别的语言、框架、应用类型
+   - 填入攻击面草图（入口点和 Sink 列表，标注为"初步扫描"）
+   - 使用 `templates/work-background-template.md` 格式
+
+2. **创建模块地图草稿** `workspace/01-module-map.md`:
+   - 在文档头部标注 `> **状态: DRAFT v1** — 快速模块划分结果`
+   - 填入粗略模块列表、文件映射
+   - 模块依赖标记为"待分析"
+   - 使用 `templates/module-info-template.md` 格式
+
+3. **为每个模块创建子代理工作区**:
+   ```
+   workspace/agent-<module>/
+   ├── background.md   # DRAFT 版本
+   ├── skill.md        # 审计指令
+   ├── execution.log   # 执行日志
+   └── report.md       # 待子代理填充
+   ```
+
+4. **✨ 立即并行派发所有无依赖模块的子代理**
+   - 子代理启动后必须首先读取 `background.md` 和 `skill.md`
+   - 子代理了解 current `background.md` 为 DRAFT 版本，深度侦察完成后 MainAgent 将更新
+
+##### 2A.5: 更新审计状态
+
+```json
+{
+  "phase": "phase_2a_prescan",
+  "phases": {
+    "phase_2a_prescan": {
+      "status": "completed",
+      "started_at": "2026-05-06T10:00:00+08:00",
+      "completed_at": "2026-05-06T10:05:00+08:00",
+      "outputs": {
+        "work_background_draft": "workspace/00-work-background.md",
+        "module_map_draft": "workspace/01-module-map.md"
+      }
+    },
+    "phase_2b_deep_recon": {
+      "status": "in_progress"
+    }
+  },
+  "subagents": [
+    {
+      "id": "agent-<module>",
+      "background_version": "draft",
+      "status": "running",
+      "started_at": "2026-05-06T10:05:00+08:00"
+    }
+  ]
+}
+```
+
+#### Phase 2B: MainAgent 深度侦察 (与子代理并行执行)
+
+**⚠️ 关键**: Phase 2A 子代理派发后**立即开始**此阶段，与子代理审计并行进行。
+
+**目标**: 对项目进行深度技术侦察，产出精确的工作背景和模块划分，供 Phase 2C 增量注入子代理。
+
+##### 2B.1: 代码知识图谱构建（codebase-memory MCP）
+
+在子代理审计的同时，**使用 codebase-memory MCP 将目标仓库构建为代码知识图谱**:
 
 ### Step 1: 索引目标仓库
 调用 `index_repository` 将源码目录构建为图数据库：
@@ -430,70 +557,139 @@ code-audit-projects/<project-name>/
 - `search_graph(name_pattern=".*system.*|.*popen.*|.*subprocess.*")` — 查找命令执行
 - `search_graph(name_pattern=".*open.*|.*read.*|.*write.*")` — 查找文件操作
 - `trace_path(direction="inbound")` 对每个 Sink 反向追踪调用来源
-```
 
 **何时使用图谱 vs 传统 grep**:
 - **图谱优先**: 调用链追踪、依赖分析、架构理解、影响范围评估
 - **grep 辅助**: 文本模式搜索、特定字符串查找、配置文件审查
 
-在 `workspace/00-work-background.md` 创建 **工作背景** 文档，包含:
-- 技术栈总结
-- 应用类型分类
-- **攻击面地图** (入口点、信任边界)
-- **高风险区域** (认证、文件操作、序列化、命令执行)
-- **⭐ 代码图谱关键发现**（从 codebase-memory 提取的架构、高扇入/扇出函数、端点列表）
+##### 2B.2: 深度攻击面映射
 
-**使用**: `references/module-detection.md` 获取按项目类型的模块结构模板。
+基于图谱和代码阅读，产出精确的攻击面分析：
 
-#### Phase 2.2: 模块划分
+- **详细 Source 列表**: 每个入口函数的完整签名、参数类型、认证状态
+- **详细 Sink 列表**: 每个危险函数的调用上下文、防护措施
+- **信任边界分析**: 内部 API vs 外部 API、认证域边界
 
-将代码库划分为逻辑模块以进行并行审计:
+##### 2B.3: 精确模块依赖分析
 
-1. 从目录结构识别模块边界
-2. 将文件映射到每个模块
-3. 识别模块间依赖关系
-4. 创建模块依赖图
-
-**⭐ 图谱增强模块划分**:
 - `get_architecture` 获取自动识别的模块结构
 - `query_graph` 使用 Cypher 查询跨模块调用关系：
   ```
   MATCH (a)-[r:CALLS]->(b) WHERE a.file_path STARTS WITH '/module-a/' AND b.file_path STARTS WITH '/module-b/' RETURN a.name, b.name, count(r) ORDER BY count(r) DESC LIMIT 20
   ```
-- 基于图谱的实际调用依赖（而非仅目录结构）划分模块，确保审计边界准确
+- 基于图谱的实际调用依赖（而非仅目录结构）更新模块划分
+- 更新模块依赖图
 
-将模块映射存储在 `workspace/01-module-map.md`。
+##### 2B.4: 完善文档为 FINAL 版本
 
-#### Phase 2.3: 子代理调度 (CVE 猎手)
+将 Phase 2A 创建的 DRAFT 文档升级为 FINAL:
+- 更新 `workspace/00-work-background.md`：状态改为 FINAL，填入深度分析结果
+- 更新 `workspace/01-module-map.md`：状态改为 FINAL，填入精确模块边界和依赖
+
+**使用**: `references/module-detection.md` 获取按项目类型的模块结构模板。
+
+#### Phase 2C: 增量情报注入 (深度侦察完成后立即执行)
+
+**目标**: 将 Phase 2B 深度侦察的发现增量传递给正在运行的子代理。
+
+##### 2C.1: 更新子代理 background.md
+
+为每个正在运行的子代理更新其 `workspace/agent-<module>/background.md`:
+
+1. 在文件头部将 `DRAFT v1` 改为 `FINAL`
+2. 追加新章节 `## 🔄 深度侦察补充情报`:
+   ```markdown
+   ## 🔄 深度侦察补充情报 (注入时间: <timestamp>)
+
+   ### 新增攻击面信息
+   - [2B 深度侦察中发现的该模块新攻击面]
+
+   ### 精确模块依赖
+   - [该模块与其他模块的实际调用关系]
+
+   ### 图谱追踪结果
+   - [该模块关键 Source→Sink 路径的图谱追踪结果]
+
+   ### 高风险区域补充
+   - [2B 中新识别的高风险代码区域]
+   ```
+
+3. 如有必要，调整审计优先级和重点关注区域
+
+##### 2C.2: 更新子代理 skill.md (如需要)
+
+如果深度侦察发现新的漏洞类型值得关注，追加到 skill.md：
+```markdown
+## 🔄 深度侦察补充指令 (注入时间: <timestamp>)
+
+基于代码图谱分析，新增以下搜索目标：
+- [新的高价值 Sink]
+- [新发现的攻击入口]
+- [图谱识别的关键调用路径]
+```
+
+##### 2C.3: 记录注入事件
+
+```json
+{
+  "event": "intelligence_injected",
+  "timestamp": "2026-05-06T10:20:00+08:00",
+  "target_agents": ["agent-services", "agent-connector", "agent-viewer"],
+  "injection_type": "deep_recon_results",
+  "new_findings": ["3 个新攻击面", "2 条跨模块调用路径"]
+}
+```
+
+##### 2C.4: 子代理接收更新
+
+子代理在审计过程中应定期检查 background.md 是否有更新（见子代理 skill 模板中的增量更新检查流程）。发现 FINAL 版本后：
+- 审阅深度侦察补充情报章节
+- 如发现新的攻击面或高风险区域，将其纳入 Phase 2 深入分析
+- 调整审计优先级
+
+#### Phase 2.3: 子代理审计执行 (与 2B 并行)
+
+子代理在 Phase 2A 被派发后立即开始审计，与 MainAgent 的深度侦察（2B）并行执行。
 
 **⚠️ 目录结构要求**: 必须使用标准工作区布局
 
 **MainAgent 必须为每个子 Agent 创建独立背景文档**
 
-For each module, create a dedicated SubAgent workspace:
+工作区结构（Phase 2A 已创建）:
 
 ```
 workspace/
-├── 00-work-background.md        # ✅ MainAgent 创建 (全局技术侦察)
-├── 01-module-map.md             # ✅ MainAgent 创建 (模块划分)
+├── 00-work-background.md        # ✅ MainAgent 创建 (DRAFT → Phase 2B 升级为 FINAL)
+├── 01-module-map.md             # ✅ MainAgent 创建 (DRAFT → Phase 2B 升级为 FINAL)
 ├── agent-<module-1>/            # ✅ 子 Agent 1 工作区
-│   ├── background.md            # MainAgent 创建 (独立背景文档) ⭐
-│   ├── skill.md                 # MainAgent 创建 (审计指令)
-│   ├── execution.log          # ⭐ 子 Agent 执行日志 (自动保存)
+│   ├── background.md            # MainAgent 创建 (DRAFT → Phase 2C 升级为 FINAL)
+│   ├── skill.md                 # MainAgent 创建 (审计指令，Phase 2C 可追加)
+│   ├── execution.log            # ⭐ 子 Agent 执行日志 (自动保存)
 │   └── report.md                # 子 Agent 输出 (CVE 报告)
 ├── agent-<module-2>/            # ✅ 子 Agent 2 工作区
-│   ├── background.md            # ⭐ 新增
-│   ├── execution.log          # ⭐ 新增
+│   ├── background.md
+│   ├── skill.md
+│   ├── execution.log
 │   └── report.md
 └── agent-<module-N>/            # ✅ 子 Agent N 工作区
-    ├── background.md            # ⭐ 新增
-    ├── execution.log          # ⭐ 新增
+    ├── background.md
+    ├── skill.md
+    ├── execution.log
     └── report.md
 ```
 
-**调度策略**:
-- 如果模块间无依赖 → 并行调度
-- 如果模块间有依赖 → 按依赖顺序调度
+**并行调度策略**:
+- Phase 2A 完成后，所有无依赖模块立即并行派发
+- 有依赖的模块按依赖顺序派发（但仍比原串行流程更早启动）
+- MainAgent 在 Phase 2B 深度侦察期间不阻塞子代理
+- Phase 2C 增量注入时子代理仍在运行，无缝接收新情报
+
+**子代理增量更新检查流程** ⭐:
+
+子代理在审计过程中必须:
+1. **Phase 0 完成后**: 检查 `background.md` 是否从 DRAFT 更新为 FINAL
+2. **Phase 2 开始前**: 再次检查 `background.md` 是否有新内容
+3. **发现 FINAL 版本时**: 审阅 `## 🔄 深度侦察补充情报` 章节，将新发现纳入审计范围
 
 **阅读**:
 - `templates/subagent-skill-template.md` 用于创建子代理技能
@@ -629,6 +825,7 @@ userInput → buildQuery → validateInput (不足) → createQuery → CVE
 - 追踪完整调用链 (Source → Sink)
 - 记录安全控制措施和绕过方法
 - 过滤理论性问题
+- **⭐ 增量更新检查**: Phase 0 完成后和 Phase 2 开始前，检查 background.md 是否从 DRAFT 更新为 FINAL，如有更新则审阅补充情报并调整审计重点
 - **⭐ 使用 codebase-memory MCP 图谱工具辅助审计**（见下方图谱增强审计流程）
 
 **⭐ 图谱增强审计流程（codebase-memory MCP）**:
