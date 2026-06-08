@@ -17,11 +17,19 @@ code-audit-projects/<project-name>/
 │   ├── 00-work-background.md    # 技术侦察报告 (MainAgent 创建)
 │   ├── 01-module-map.md         # 模块划分图 (MainAgent 创建)
 │   ├── agent-<module-1>/        # 子 Agent 1 工作区
+│   │   ├── background.md         # 子 Agent 背景文档 (DRAFT → FINAL)
 │   │   ├── skill.md             # 子 Agent 审计指令
+│   │   ├── execution.log         # 子 Agent 执行日志
 │   │   └── report.md            # CVE 审计报告 (子 Agent 输出)
 │   ├── agent-<module-2>/        # 子 Agent 2 工作区
+│   │   ├── background.md
+│   │   ├── skill.md
+│   │   ├── execution.log
 │   │   └── report.md
 │   └── agent-<module-N>/        # 子 Agent N 工作区
+│       ├── background.md
+│       ├── skill.md
+│       ├── execution.log
 │       └── report.md
 │
 ├── pocs/                    # POC 脚本 (CVE 验证后创建)
@@ -107,7 +115,9 @@ workspace/
 ├── 00-work-background.md    # 技术栈、攻击面、CVE 发现策略
 ├── 01-module-map.md         # 模块划分、文件映射
 └── agent-<module-name>/     # 每个子 Agent 独立工作区
+    ├── background.md        # 模块背景文档 (MainAgent 创建)
     ├── skill.md             # 审计指令 (MainAgent 创建)
+    ├── execution.log        # 执行日志
     └── report.md            # CVE 报告 (子 Agent 输出)
 ```
 
@@ -131,9 +141,25 @@ workspace/
 
 ```
 workspace/agent-<module-name>/
+├── background.md    # MainAgent 创建的 DRAFT 背景文档，Phase 2C 更新为 FINAL
 ├── skill.md         # MainAgent 创建的审计指令
+├── execution.log    # 子 Agent 执行日志
 └── report.md        # 子 Agent 完成的 CVE 报告
 ```
+
+**Phase 2A 完成前硬性要求**:
+- `workspace/01-module-map.md` 中每个模块都必须有对应 `workspace/agent-<module-name>/`
+- 每个子 Agent 工作区必须同时存在 `background.md`、`skill.md`、`execution.log`、`report.md`
+- `state/audit-state.json` 的 `subagents[]` 必须包含每个模块的状态
+- `state/task-history.jsonl` 必须先记录 `subagent_workspaces_created` 和每个 `subagent_started`，再记录 `phase_2a_prescan_completed`
+- 未满足以上条件时，禁止进入 Phase 2B、POC、验证测试或手动漏洞测试
+
+**background.md 必须指定**:
+- 模块名称和源代码绝对路径
+- 报告输出绝对路径
+- 涉及文件列表
+- 高价值漏洞类型
+- 审计流程、调用流追踪、输入输出流、全局策略限制和绕过分析
 
 **skill.md 必须指定**:
 - 审计模块名称
@@ -141,6 +167,8 @@ workspace/agent-<module-name>/
 - 重点文件列表
 - CVE 发现重点 (漏洞类型)
 - 报告输出位置 (绝对路径)
+- background.md 绝对路径
+- execution.log 绝对路径
 
 **report.md 必须包含**:
 - CVE 编号 (或 pending)
@@ -231,8 +259,9 @@ EOF
 ```bash
 # 为每个模块创建子 Agent 工作区
 mkdir -p workspace/agent-<module-name>/
-# 创建 skill.md
-# 启动子 Agent
+# 创建 background.md、skill.md、execution.log、report.md
+# 调用子代理工具启动子 Agent
+# 记录 subagent_started 后才能标记 Phase 2A completed
 ```
 
 ---
@@ -246,6 +275,9 @@ mkdir -p workspace/agent-<module-name>/
 | 子 Agent 直接输出到 `reports/` | 子 Agent 输出到 `workspace/agent-*/report.md` |
 | MainAgent 不创建背景文档 | MainAgent 必须先创建 `00-work-background.md` |
 | 报告命名无规律 | 使用 `cve-<NNN>-<type>.md` 格式 |
+| 只创建 `00-work-background.md` 和 `01-module-map.md`，未创建 `agent-*` | Phase 2A 必须补建每个 `workspace/agent-<module>/` 后才能完成 |
+| 只写子代理计划，没有实际派发 | 必须调用子代理工具并记录 `subagent_started` |
+| `phase_2a_prescan_completed` 早于 `subagent_started` | 先派发所有子代理，再标记 Phase 2A completed |
 
 ---
 
@@ -259,8 +291,17 @@ mkdir -p workspace/agent-<module-name>/
 - [ ] `workspace/00-work-background.md` 已创建
 - [ ] `workspace/01-module-map.md` 已创建
 - [ ] `metadata.json` 已创建
-- [ ] 每个子 Agent 有独立工作区 `workspace/agent-<name>/`
-- [ ] 每个子 Agent 有 `skill.md` 指令文件
+
+Phase 2A 派发完成前检查：
+
+- [ ] 至少 1 个 `workspace/agent-*` 已创建
+- [ ] 每个 `workspace/agent-*` 都包含 `background.md`
+- [ ] 每个 `workspace/agent-*` 都包含 `skill.md`
+- [ ] 每个 `workspace/agent-*` 都包含 `execution.log`
+- [ ] 每个 `workspace/agent-*` 都包含 `report.md`
+- [ ] `state/audit-state.json` 中 `subagents[]` 非空
+- [ ] `state/task-history.jsonl` 已记录每个 `subagent_started`
+- [ ] `phase_2a_dispatch_gate_passed` 已记录
 
 ---
 

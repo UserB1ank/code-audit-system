@@ -56,6 +56,13 @@
       "prompt": "https://github.com/spring-projects/spring-framework.git 请做深度审计，先查一下这个项目的历史漏洞再开始",
       "expected_output": "自动识别为知名开源项目，触发专项审计模式，查询 Spring Framework 历史 CVE，提取 Source→Sink 模式，注入子代理背景文档",
       "files": []
+    },
+    {
+      "id": 9,
+      "name": "phase-2a-subagent-dispatch-gate",
+      "prompt": "审计 https://github.com/example/large-java-app.git。注意不要跳过多 agent 工作区创建。",
+      "expected_output": "Phase 2A 不能只创建 workspace/00-work-background.md 和 workspace/01-module-map.md；必须为每个模块创建 workspace/agent-<module>/background.md、skill.md、execution.log、report.md，更新 state/audit-state.json 的 subagents[]，记录 subagent_workspaces_created 和每个 subagent_started 后，才允许进入 Phase 2B 或后续验证测试",
+      "files": []
     }
   ]
 }

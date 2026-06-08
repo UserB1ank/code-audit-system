@@ -86,15 +86,52 @@ grep -rn "\.read\(\)\|\.write\(\)\|\.open\(\|FileInputStream\|FileOutputStream" 
 3. **为每个模块创建子代理工作区**:
    ```
    workspace/agent-<module>/
-   ├── background.md   # DRAFT 版本
-   ├── skill.md        # 审计指令
-   ├── execution.log   # 执行日志
-   └── report.md       # 待子代理填充
+   ├── background.md   # DRAFT v1 版本，从 templates/subagent-background-template.md 生成
+   ├── skill.md        # 审计指令，从 templates/subagent-skill-template.md 生成
+   ├── execution.log   # 执行日志，初始化为空或使用 templates/execution-log-template.md
+   └── report.md       # 占位报告，待子代理填充
    ```
+   - `background.md` 头部必须标注 `> **状态: DRAFT v1**`
+   - `skill.md` 必须包含目标源码绝对路径、报告输出绝对路径、背景文档绝对路径和专项技能绝对路径
+   - `report.md` 至少包含 `# <module> CVE 审计报告` 和 `> 状态: 待子代理填充`
 
 4. **立即并行派发所有无依赖模块的子代理**
+   - "派发"不是写一句计划，必须实际调用当前环境可用的子代理创建工具
+   - 专项审计模式下，先把 `workspace/02-cve-intelligence.md` 中该模块的情报写入 `background.md`，再派发；派发后将 `cve_intelligence.subagent_injection_status` 更新为 `injected`
+   - 如果运行环境提供 `multi_agent_v1.spawn_agent`，每个模块调用一次，并在任务描述中要求子代理首先读取自己的 `background.md` 和 `skill.md`
+   - 如果使用其他平台，调用等价的 SubAgent/Task/Worker 创建工具
+   - 如果当前环境没有子代理工具，Phase 2A 必须标记为 `failed` 或 `blocked`，向用户说明无法继续多代理审计，不能进入 Phase 2B 或后续阶段
    - 子代理启动后必须首先读取 `background.md` 和 `skill.md`
    - 子代理了解 background.md 为 DRAFT 版本，深度侦察完成后 MainAgent 将更新
+
+5. **Phase 2A 完成前自检 (硬闸)**
+   ```bash
+   test -f workspace/00-work-background.md
+   test -f workspace/01-module-map.md
+   test -d workspace/agent-<module>
+   test -f workspace/agent-<module>/background.md
+   test -f workspace/agent-<module>/skill.md
+   test -f workspace/agent-<module>/execution.log
+   test -f workspace/agent-<module>/report.md
+   ```
+
+   对每个模块重复上述检查。随后在写入 `phase_2a_prescan.status = "completed"` 前检查状态文件已有子代理记录:
+   ```bash
+   jq -e '.subagents | length > 0' state/audit-state.json
+   ```
+
+   写入 `phase_2a_prescan.status = "completed"` 后，再复核完成门禁:
+   ```bash
+   jq -e '.phases.phase_2a_prescan.dispatch_gate.status == "passed"' state/audit-state.json
+   jq -e '.phases.phase_2a_prescan.status == "completed"' state/audit-state.json
+   ```
+
+   `phase_2a_prescan_completed` 事件只能在以下事件之后写入 `state/task-history.jsonl`:
+   - `draft_documents_created`
+   - `subagent_workspaces_created`
+   - 每个模块 1 条 `subagent_started`
+
+   未通过自检时，禁止启动 Phase 2B、POC、验证测试或手动测试。
 
 ### 2A.5: 更新审计状态
 
@@ -108,7 +145,17 @@ grep -rn "\.read\(\)\|\.write\(\)\|\.open\(\|FileInputStream\|FileOutputStream" 
       "completed_at": "2026-05-06T10:05:00+08:00",
       "outputs": {
         "work_background_draft": "workspace/00-work-background.md",
-        "module_map_draft": "workspace/01-module-map.md"
+        "module_map_draft": "workspace/01-module-map.md",
+        "subagent_workspaces": [
+          "workspace/agent-<module>"
+        ]
+      },
+      "dispatch_gate": {
+        "status": "passed",
+        "module_count": 1,
+        "workspace_count": 1,
+        "started_count": 1,
+        "checked_at": "2026-05-06T10:05:00+08:00"
       }
     },
     "phase_2b_deep_recon": { "status": "in_progress" }
@@ -121,6 +168,13 @@ grep -rn "\.read\(\)\|\.write\(\)\|\.open\(\|FileInputStream\|FileOutputStream" 
   }]
 }
 ```
+
+**禁止状态**:
+- `phase_2a_prescan.status = "completed"` 但 `subagents` 为空
+- `phase_2b_deep_recon.status = "in_progress"` 但没有任何 `workspace/agent-*`
+- `phase_3_poc`、`phase_4_verification` 或手动测试已经开始，但 `phase_2_discovery.subagents.total = 0`
+
+发现禁止状态时，MainAgent 必须立即回到 2A.4 补建并派发子代理。
 
 ---
 

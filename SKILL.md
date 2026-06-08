@@ -148,7 +148,7 @@ description: CVE-oriented multi-agent code audit system. Use when user provides 
 
 ### Phase 2.0: CVE 情报收集 (仅专项审计模式)
 
-利用 `cve-search` MCP 工具收集目标产品的历史漏洞情报：厂商/产品识别 → CVE 数据收集 → 攻击模式分析 → 模式拟合与变体推测 → 情报报告生成与注入子代理。
+利用 `cve-search` MCP 工具收集目标产品的历史漏洞情报：厂商/产品识别 → CVE 数据收集 → 攻击模式分析 → 模式拟合与变体推测 → 生成 `workspace/02-cve-intelligence.md`。由于子代理工作区在 Phase 2A 才创建，专项情报在 Phase 2.0 先按模块缓存为待注入内容，并在 Phase 2A 创建 `workspace/agent-*` 后、派发子代理前写入各自 `background.md`。
 
 **详细步骤**: 参考 `references/phase2-cve-intelligence.md`
 **方法论**: 参考 `references/cve-intelligence-guide.md`
@@ -156,6 +156,24 @@ description: CVE-oriented multi-agent code audit system. Use when user provides 
 ### Phase 2A: 快速预扫描与并行派发 (5 分钟内)
 
 快速语言/框架识别、粗略模块划分、攻击面草图后，创建 DRAFT 文档并**立即并行派发所有无依赖子代理**。
+
+#### Phase 2A 完成硬闸 (不可跳过)
+
+Phase 2A **只有在以下条件全部满足后才允许标记为 completed**。任何一项缺失都必须立即修复；修复前禁止进入 Phase 2B、Phase 3、POC、验证测试或手动漏洞测试。
+
+1. `workspace/00-work-background.md` 已创建，头部状态为 `DRAFT v1`
+2. `workspace/01-module-map.md` 已创建，头部状态为 `DRAFT v1`
+3. `workspace/01-module-map.md` 中至少定义 1 个可审计模块
+4. 每个模块都有独立目录 `workspace/agent-<module>/`
+5. 每个子代理目录都包含四个文件：
+   - `background.md` — 从 `templates/subagent-background-template.md` 生成，头部状态为 `DRAFT v1`
+   - `skill.md` — 从 `templates/subagent-skill-template.md` 生成，包含绝对源码路径和报告路径
+   - `execution.log` — 从 `templates/execution-log-template.md` 初始化或创建空日志
+   - `report.md` — 创建占位报告，等待子代理填充
+6. `state/audit-state.json` 的 `subagents[]` 必须覆盖所有模块，且每个条目包含 `id`、`module`、`source_path`、`status`、`background_version` 和 `output`
+7. `state/task-history.jsonl` 必须记录 `draft_documents_created`、`subagent_workspaces_created`、每个子代理的 `subagent_started`，最后才允许记录 `phase_2a_prescan_completed`
+8. 专项审计模式下，`workspace/02-cve-intelligence.md` 中按模块缓存的情报必须已写入对应 `background.md`，并将 `cve_intelligence.subagent_injection_status` 更新为 `injected`
+9. 必须实际派发子代理：如果运行环境提供子代理工具（例如 `multi_agent_v1.spawn_agent` 或等价工具），MainAgent 必须为每个模块调用一次；如果当前环境没有可用子代理工具，必须将 Phase 2A 标记为 `failed` 或 `blocked`，向用户说明原因，不能继续执行后续审计阶段
 
 ### Phase 2B: MainAgent 深度侦察 (与子代理并行)
 
@@ -189,6 +207,7 @@ workspace/
 - Phase 2A 完成后，所有无依赖模块立即并行派发
 - MainAgent 深度侦察期间不阻塞子代理
 - Phase 2C 增量注入时子代理无缝接收新情报
+- 如果发现已进入 Phase 2B/Phase 3/验证测试但 `workspace/agent-*` 不存在或 `subagents[]` 为空，必须立即停止当前阶段，回滚到 Phase 2A 补建工作区并派发子代理，然后再继续
 
 **子代理增量更新检查** ⭐:
 1. Phase 0 完成后: 检查 `background.md` 是否从 DRAFT 更新为 FINAL

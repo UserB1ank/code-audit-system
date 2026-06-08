@@ -156,6 +156,7 @@ code-audit-projects/<项目名>/
 │   └── agent-<模块名>/
 │       ├── background.md
 │       ├── skill.md
+│       ├── execution.log
 │       └── report.md
 ├── pocs/                    # 武器化 POC 脚本
 ├── reports/                 # CVE 提交报告

@@ -23,7 +23,7 @@ The MainAgent drives a 6-step workflow defined in `SKILL.md`:
 
 ### SubAgents (CVE Hunters)
 
-Each module gets a dedicated subagent with its own workspace under `workspace/agent-<module>/`. Subagents follow a 4-phase audit process: reconnaissance, deep dive (Source→Sink tracing), exploitability assessment, and CVE-ready reporting.
+Each module gets a dedicated subagent with its own workspace under `workspace/agent-<module>/`. The workspace must contain `background.md`, `skill.md`, `execution.log`, and `report.md` before Phase 2A can be marked complete. Subagents follow a 4-phase audit process: reconnaissance, deep dive (Source→Sink tracing), exploitability assessment, and CVE-ready reporting.
 
 ### Key Design Constraints
 

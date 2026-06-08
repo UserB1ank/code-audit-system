@@ -88,7 +88,9 @@ code-audit-projects/<project-name>/
 │   ├── 00-work-background.md
 │   ├── 01-module-map.md
 │   └── agent-<module>/
+│       ├── background.md
 │       ├── skill.md
+│       ├── execution.log
 │       └── report.md
 ├── pocs/                # POC 脚本 (CVE 验证后)
 ├── reports/             # CVE 报告 (最终输出)

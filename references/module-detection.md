@@ -221,6 +221,7 @@ Scan these files to identify project type:
 ## Next Steps After Partitioning
 
 1. Create `workspace/01-module-map.md` with file assignments
-2. For each module, create SubAgent workspace
-3. Copy relevant section of this reference to each SubAgent's `work-background.md`
-4. Dispatch SubAgents with module-specific instructions
+2. For each module, create `workspace/agent-<module>/`
+3. Create `background.md`, `skill.md`, `execution.log`, and `report.md` in every SubAgent workspace
+4. Copy relevant section of this reference to each SubAgent's `background.md`
+5. Dispatch SubAgents with module-specific instructions and record `subagent_started`

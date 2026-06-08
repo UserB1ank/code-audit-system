@@ -156,6 +156,7 @@ code-audit-projects/<project-name>/
 │   └── agent-<module>/
 │       ├── background.md
 │       ├── skill.md
+│       ├── execution.log
 │       └── report.md
 ├── pocs/                    # Weaponized POC scripts
 ├── reports/                 # CVE submission reports

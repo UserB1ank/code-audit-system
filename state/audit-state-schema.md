@@ -59,16 +59,29 @@ code-audit-projects/<project>/state/
     "phase_2a_prescan": {
       "status": "completed",
       "started_at": "2026-04-02T13:05:00+08:00",
-      "completed_at": "2026-04-02T13:10:00+08:00",
+      "completed_at": "2026-04-02T13:05:45+08:00",
       "outputs": {
         "work_background_draft": "workspace/00-work-background.md",
-        "module_map_draft": "workspace/01-module-map.md"
+        "module_map_draft": "workspace/01-module-map.md",
+        "subagent_workspaces": [
+          "workspace/agent-services",
+          "workspace/agent-connector",
+          "workspace/agent-viewer"
+        ]
+      },
+      "dispatch_gate": {
+        "status": "passed",
+        "module_count": 3,
+        "workspace_count": 3,
+        "started_count": 3,
+        "required_files_per_agent": ["background.md", "skill.md", "execution.log", "report.md"],
+        "checked_at": "2026-04-02T13:05:45+08:00"
       },
       "note": "快速预扫描: 语言/框架识别、粗略模块划分、攻击面草图、立即派发子代理"
     },
     "phase_2b_deep_recon": {
       "status": "completed",
-      "started_at": "2026-04-02T13:10:00+08:00",
+      "started_at": "2026-04-02T13:05:45+08:00",
       "completed_at": "2026-04-02T13:25:00+08:00",
       "progress": {
         "code_graph_indexed": true,
@@ -104,7 +117,7 @@ code-audit-projects/<project>/state/
     },
     "phase_2_discovery": {
       "status": "in_progress",
-      "started_at": "2026-04-02T13:10:00+08:00",
+      "started_at": "2026-04-02T13:05:40+08:00",
       "subagents": {
         "total": 3,
         "active": 3,
@@ -135,7 +148,7 @@ code-audit-projects/<project>/state/
       "source_path": "<project-root>/source/core/services/",
       "priority": "P0",
       "status": "running",
-      "started_at": "2026-04-02T13:06:00+08:00",
+      "started_at": "2026-04-02T13:05:40+08:00",
       "background_version": "draft",
       "last_intelligence_update": "2026-04-02T13:25:30+08:00",
       "progress": {
@@ -160,7 +173,7 @@ code-audit-projects/<project>/state/
       "module": "core/connector/",
       "priority": "P0",
       "status": "running",
-      "started_at": "2026-04-02T13:06:00+08:00",
+      "started_at": "2026-04-02T13:05:42+08:00",
       "background_version": "draft",
       "last_intelligence_update": "2026-04-02T13:25:45+08:00",
       "progress": {
@@ -179,7 +192,7 @@ code-audit-projects/<project>/state/
       "module": "core/viewer/",
       "priority": "P0",
       "status": "running",
-      "started_at": "2026-04-02T13:06:00+08:00",
+      "started_at": "2026-04-02T13:05:44+08:00",
       "background_version": "draft",
       "last_intelligence_update": null,
       "progress": {
@@ -211,7 +224,7 @@ code-audit-projects/<project>/state/
       "summary": "项目初始化完成"
     },
     {
-      "timestamp": "2026-04-02T13:05:35+08:00",
+      "timestamp": "2026-04-02T13:05:45+08:00",
       "phase": "phase_2a_prescan",
       "status": "completed",
       "summary": "快速预扫描完成，3 个子代理已并行派发"
@@ -263,11 +276,13 @@ code-audit-projects/<project>/state/
 {"timestamp": "2026-04-02T13:05:20+08:00", "event": "quick_attack_surface_sketched", "sources_found": 12, "sinks_found": 8}
 {"timestamp": "2026-04-02T13:05:25+08:00", "event": "draft_documents_created", "files": ["workspace/00-work-background.md", "workspace/01-module-map.md"]}
 {"timestamp": "2026-04-02T13:05:30+08:00", "event": "subagent_workspaces_created", "count": 3}
-{"timestamp": "2026-04-02T13:05:35+08:00", "event": "phase_2a_prescan_completed", "duration_seconds": 35}
 {"timestamp": "2026-04-02T13:05:40+08:00", "event": "subagent_started", "id": "agent-services", "module": "core/services/", "background_version": "draft"}
 {"timestamp": "2026-04-02T13:05:42+08:00", "event": "subagent_started", "id": "agent-connector", "module": "core/connector/", "background_version": "draft"}
 {"timestamp": "2026-04-02T13:05:44+08:00", "event": "subagent_started", "id": "agent-viewer", "module": "core/viewer/", "background_version": "draft"}
+{"timestamp": "2026-04-02T13:05:45+08:00", "event": "phase_2a_dispatch_gate_passed", "module_count": 3, "workspace_count": 3, "started_count": 3}
+{"timestamp": "2026-04-02T13:05:45+08:00", "event": "phase_2a_prescan_completed", "duration_seconds": 45}
 {"timestamp": "2026-04-02T13:05:45+08:00", "event": "phase_2b_deep_recon_started", "note": "与子代理审计并行"}
+{"timestamp": "2026-04-02T13:10:00+08:00", "event": "subagent_progress", "id": "agent-services", "phase": "phase_0_exploration", "files_scanned": 15}
 {"timestamp": "2026-04-02T13:10:00+08:00", "event": "code_graph_indexed", "functions": 1250, "calls": 3400}
 {"timestamp": "2026-04-02T13:15:00+08:00", "event": "architecture_analyzed", "type": "MVC Web Application"}
 {"timestamp": "2026-04-02T13:20:00+08:00", "event": "attack_surface_mapped", "sources": 28, "sinks": 18}
@@ -277,7 +292,6 @@ code-audit-projects/<project>/state/
 {"timestamp": "2026-04-02T13:25:30+08:00", "event": "intelligence_injected", "target": "agent-services", "type": "deep_recon_results"}
 {"timestamp": "2026-04-02T13:25:45+08:00", "event": "intelligence_injected", "target": "agent-connector", "type": "deep_recon_results"}
 {"timestamp": "2026-04-02T13:26:00+08:00", "event": "phase_2c_injection_completed"}
-{"timestamp": "2026-04-02T13:10:00+08:00", "event": "subagent_progress", "id": "agent-services", "phase": "phase_0_exploration", "files_scanned": 15}
 {"timestamp": "2026-04-02T13:26:00+08:00", "event": "subagent_checked_update", "id": "agent-services", "background_version": "final"}
 {"timestamp": "2026-04-02T13:30:00+08:00", "event": "vulnerability_found", "id": "agent-services", "type": "JCR SQL Injection", "cvss": 9.8}
 {"timestamp": "2026-04-02T13:35:00+08:00", "event": "subagent_completed", "id": "agent-services", "vulnerabilities": 3}
@@ -349,6 +363,7 @@ state/checkpoint-<timestamp>.json
     "critical_count": 18,
     "high_count": 67,
     "intelligence_report": "workspace/02-cve-intelligence.md",
+    "subagent_injection_status": "pending_phase_2a|injected",
     "predicted_variants": 5,
     "high_probability_variants": 2
   }
@@ -358,10 +373,6 @@ state/checkpoint-<timestamp>.json
 - `standard`: 标准模式，直接进行代码审计
 - `specialized`: 专项审计模式，先收集 CVE 情报再进行漏洞猎杀
 - `cve_intelligence`: 仅专项审计模式下非 null
-{
-  "status": "init|cloning|auditing|poc_developing|verifying|reporting|completed|paused|failed"
-}
-```
 
 ### 阶段状态
 
@@ -444,6 +455,9 @@ state/checkpoint-<timestamp>.json
 {"event": "quick_module_division", "modules": N, "method": "directory_structure"}
 {"event": "quick_attack_surface_sketched", "sources_found": N, "sinks_found": N}
 {"event": "draft_documents_created", "files": [...]}
+{"event": "subagent_workspaces_created", "count": N, "required_files": ["background.md", "skill.md", "execution.log", "report.md"]}
+{"event": "subagent_started", "id": "agent-xxx", "module": "...", "background_version": "draft"}
+{"event": "phase_2a_dispatch_gate_passed", "module_count": N, "workspace_count": N, "started_count": N}
 {"event": "phase_2a_prescan_completed", "duration_seconds": N}
 {"event": "phase_2b_deep_recon_started", "note": "与子代理审计并行"}
 {"event": "code_graph_indexed", "functions": N, "calls": N}
@@ -454,6 +468,30 @@ state/checkpoint-<timestamp>.json
 {"event": "intelligence_injected", "target": "agent-xxx", "type": "deep_recon_results"}
 {"event": "phase_2c_injection_completed"}
 ```
+
+### Phase 2A 完成门禁
+
+`phase_2a_prescan.status` 只能在以下条件全部满足时设置为 `completed`:
+
+1. `workspace/00-work-background.md` 和 `workspace/01-module-map.md` 已创建
+2. `workspace/01-module-map.md` 至少定义 1 个模块
+3. 每个模块都有 `workspace/agent-<module>/background.md`
+4. 每个模块都有 `workspace/agent-<module>/skill.md`
+5. 每个模块都有 `workspace/agent-<module>/execution.log`
+6. 每个模块都有 `workspace/agent-<module>/report.md`
+7. `subagents[]` 覆盖全部模块，且每个子代理状态为 `running`；若派发失败，Phase 2A 必须保持 `failed` 或 `blocked`，不能标记为 `completed`
+8. `task-history.jsonl` 已记录 `subagent_workspaces_created` 和每个 `subagent_started`
+9. 专项审计模式下，`cve_intelligence.subagent_injection_status == "injected"`
+10. `phase_2a_dispatch_gate_passed` 已记录，且 `module_count == workspace_count == started_count`
+
+禁止出现以下状态组合:
+
+| 非法状态 | 处理 |
+|----------|------|
+| `phase_2a_prescan.status == "completed"` 且 `subagents[]` 为空 | 将 Phase 2A 改为 `failed`，补建工作区并派发 |
+| `phase_2b_deep_recon.status == "in_progress"` 且无 `workspace/agent-*` | 暂停 2B，回到 2A.4 |
+| `phase_3_poc` 或 `phase_4_verification` 已开始但 `phase_2_discovery.subagents.total == 0` | 停止后续阶段，补跑 Phase 2A/2.3 |
+| 只存在 `00-work-background.md`/`01-module-map.md`，没有子代理目录 | 不能视为完成 Phase 2A |
 
 ---
 
@@ -479,7 +517,7 @@ cat state/audit-state.json | jq '.subagents[] | select(.status == "running")'
 
 | 场景 | 恢复动作 |
 |------|----------|
-| Phase 2A 完成后暂停 | 从 Phase 2B 开始深度侦察，子代理继续审计 |
+| Phase 2A 完成后暂停 | 先确认 `phase_2a_dispatch_gate_passed`、`subagents[]` 和 `workspace/agent-*` 完整，再从 Phase 2B 开始深度侦察，子代理继续审计 |
 | Phase 2B 进行中子代理失败 | 子代理重启，2B 继续并行执行 |
 | Phase 2C 未完成 | 重新注入深度侦察结果到子代理 |
 | 子 Agent 运行中 | 继续等待完成 |
